@@ -1,14 +1,15 @@
-/* Galactus AI - Login Page */
+/* Galactus AI - Sign Up Page */
 import { useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext.jsx';
 
-export default function LoginPage() {
+export default function SignupPage() {
   const navigate = useNavigate();
-  const { login, continueAsGuest } = useAuth();
+  const { signup } = useAuth();
+  const [name, setName] = useState('');
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
-  const [rememberMe, setRememberMe] = useState(false);
+  const [confirmPassword, setConfirmPassword] = useState('');
   const [error, setError] = useState('');
   const [isLoading, setIsLoading] = useState(false);
   const [showPassword, setShowPassword] = useState(false);
@@ -18,7 +19,7 @@ export default function LoginPage() {
     setError('');
     setIsLoading(true);
 
-    if (!email || !password) {
+    if (!name || !email || !password || !confirmPassword) {
       setError('Please fill in all fields');
       setIsLoading(false);
       return;
@@ -30,19 +31,13 @@ export default function LoginPage() {
       return;
     }
 
-    const result = await login(email, password, rememberMe);
-
-    if (result.success) {
-      navigate('/');
-    } else {
-      setError(result.error);
+    if (password !== confirmPassword) {
+      setError('Passwords do not match');
       setIsLoading(false);
+      return;
     }
-  };
 
-  const handleGuestLogin = async () => {
-    setIsLoading(true);
-    const result = await continueAsGuest();
+    const result = await signup(name, email, password);
 
     if (result.success) {
       navigate('/');
@@ -60,8 +55,8 @@ export default function LoginPage() {
             <div className="auth-logo">
               <span className="logo-icon" aria-hidden="true">🤖</span>
             </div>
-            <h1 className="auth-title">Welcome back</h1>
-            <p className="auth-subtitle">Sign in to your Galactus AI workspace</p>
+            <h1 className="auth-title">Create account</h1>
+            <p className="auth-subtitle">Join Galactus AI and start building</p>
           </div>
 
           {error && (
@@ -72,6 +67,21 @@ export default function LoginPage() {
           )}
 
           <form className="auth-form" onSubmit={handleSubmit}>
+            <div className="form-group">
+              <label htmlFor="name" className="form-label">Name</label>
+              <input
+                type="text"
+                id="name"
+                className="form-input"
+                value={name}
+                onChange={(e) => setName(e.target.value)}
+                placeholder="Your name"
+                autoComplete="name"
+                disabled={isLoading}
+                required
+              />
+            </div>
+
             <div className="form-group">
               <label htmlFor="email" className="form-label">Email</label>
               <input
@@ -96,8 +106,8 @@ export default function LoginPage() {
                   className="form-input"
                   value={password}
                   onChange={(e) => setPassword(e.target.value)}
-                  placeholder="••••••••"
-                  autoComplete="current-password"
+                  placeholder="At least 6 characters"
+                  autoComplete="new-password"
                   disabled={isLoading}
                   required
                 />
@@ -113,19 +123,26 @@ export default function LoginPage() {
               </div>
             </div>
 
+            <div className="form-group">
+              <label htmlFor="confirmPassword" className="form-label">Confirm Password</label>
+              <input
+                type={showPassword ? 'text' : 'password'}
+                id="confirmPassword"
+                className="form-input"
+                value={confirmPassword}
+                onChange={(e) => setConfirmPassword(e.target.value)}
+                placeholder="Confirm your password"
+                autoComplete="new-password"
+                disabled={isLoading}
+                required
+              />
+            </div>
+
             <div className="form-options">
               <label className="checkbox-wrapper">
-                <input
-                  type="checkbox"
-                  className="checkbox"
-                  checked={rememberMe}
-                  onChange={(e) => setRememberMe(e.target.checked)}
-                />
-                <span className="checkbox-label">Remember me</span>
+                <input type="checkbox" className="checkbox" required />
+                <span className="checkbox-label">I agree to the <Link to="/terms">Terms of Service</Link> and <Link to="/privacy">Privacy Policy</Link></span>
               </label>
-              <Link to="/forgot-password" className="forgot-link">
-                Forgot password?
-              </Link>
             </div>
 
             <button
@@ -136,30 +153,16 @@ export default function LoginPage() {
               {isLoading ? (
                 <>
                   <span className="spinner" aria-hidden="true"></span>
-                  Signing in...
+                  Creating account...
                 </>
               ) : (
-                'Sign In'
+                'Create Account'
               )}
             </button>
           </form>
 
-          <div className="auth-divider">
-            <span>or</span>
-          </div>
-
-          <button
-            type="button"
-            className="btn btn-secondary btn-block"
-            onClick={handleGuestLogin}
-            disabled={isLoading}
-          >
-            <span aria-hidden="true">👤</span>
-            Continue as Guest
-          </button>
-
           <div className="auth-footer">
-            <p>Don't have an account? <Link to="/signup">Create one</Link></p>
+            <p>Already have an account? <Link to="/login">Sign in</Link></p>
           </div>
         </div>
       </div>

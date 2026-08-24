@@ -65,9 +65,9 @@ export default function Composer({
 
   return (
     <form className="composer" onSubmit={handleSubmit}>
-      {/* Top bar with model/provider selectors */}
-      <div className="composer-toolbar">
-        <div className="composer-left">
+      {/* Model/Provider Controls Row - above the main input */}
+      <div className="composer-controls-row">
+        <div className="composer-controls-left">
           <ModelSelector
             selectedModel="gpt-4o"
             onSelect={() => {}}
@@ -82,17 +82,17 @@ export default function Composer({
             className="composer-provider-selector"
           />
         </div>
-        <div className="composer-right">
+        <div className="composer-controls-right">
           <div className="attach-menu-wrapper" ref={attachMenuRef}>
             <button
               type="button"
-              className="composer-btn attachment-btn"
+              className="composer-control-btn attachment-btn"
               onClick={handleAttachClick}
               disabled={disabled || isStreaming}
               aria-label="Attach files"
               aria-expanded={showAttachMenu}
               aria-haspopup="menu"
-              title="Attach files (Ctrl+U)"
+              title="Attach files"
             >
               <span aria-hidden="true">📎</span>
             </button>
@@ -113,42 +113,46 @@ export default function Composer({
               </div>
             )}
           </div>
+        </div>
+      </div>
+
+      {/* Main Input Area - large rounded container */}
+      <div className="composer-main-input">
+        <div className="composer-input-wrapper">
           <button
             type="button"
-            className="composer-btn new-chat-btn"
-            onClick={onNewChat}
+            className="composer-input-btn attach-btn"
+            onClick={handleAttachClick}
             disabled={disabled || isStreaming}
-            aria-label="New conversation"
-            title="New Chat (Ctrl+N)"
+            aria-label="Attach files"
+            title="Attach"
           >
-            <span aria-hidden="true">➕</span>
+            <span aria-hidden="true">+</span>
+          </button>
+          <textarea
+            ref={textareaRef}
+            className="composer-textarea"
+            value={text}
+            onChange={(e) => setText(e.target.value)}
+            onKeyDown={handleKeyDown}
+            placeholder={placeholder}
+            disabled={disabled || isStreaming}
+            rows={1}
+            style={{ height: `${height}px` }}
+            aria-label="Message input"
+            spellCheck="true"
+          />
+          <button
+            type="button"
+            className="composer-input-btn voice-btn"
+            disabled={disabled || isStreaming || !text.trim()}
+            aria-label="Voice input"
+            title="Voice"
+          >
+            <span aria-hidden="true">🎤</span>
           </button>
         </div>
-      </div>
-
-      {/* Main input area */}
-      <div className="composer-input-wrapper">
-        <textarea
-          ref={textareaRef}
-          className="composer-textarea"
-          value={text}
-          onChange={(e) => setText(e.target.value)}
-          onKeyDown={handleKeyDown}
-          placeholder={placeholder}
-          disabled={disabled || isStreaming}
-          rows={1}
-          style={{ height: `${height}px` }}
-          aria-label="Message input"
-          spellCheck="true"
-        />
-      </div>
-
-      {/* Bottom bar with send/stop */}
-      <div className="composer-footer">
-        <div className="composer-hints">
-          <kbd>Enter</kbd> Send · <kbd>Shift+Enter</kbd> New line · <kbd>Ctrl+U</kbd> Attach · <kbd>Ctrl+N</kbd> New chat
-        </div>
-        <div className="composer-actions">
+        <div className="composer-send-wrapper">
           {isStreaming ? (
             <button
               type="button"

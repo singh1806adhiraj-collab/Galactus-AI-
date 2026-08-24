@@ -2,6 +2,7 @@
 import { Outlet, NavLink, useLocation } from 'react-router-dom';
 import { useState } from 'react';
 import ThemeToggle from '../components/ThemeToggle.jsx';
+import UserMenu from '../components/UserMenu.jsx';
 
 const navItems = [
   { path: '/', label: 'Home', icon: '💬' },
@@ -69,9 +70,7 @@ function Header({ onMenuClick }) {
         <button className="icon-btn" aria-label="Notifications">
           <span aria-hidden="true">🔔</span>
         </button>
-        <button className="icon-btn" aria-label="User menu">
-          <span aria-hidden="true">👤</span>
-        </button>
+        <UserMenu />
       </div>
     </header>
   );

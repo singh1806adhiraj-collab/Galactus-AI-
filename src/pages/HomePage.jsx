@@ -5,26 +5,8 @@ import Composer from '../components/Composer.jsx';
 import Terminal from '../components/Terminal.jsx';
 import ContextSidebar from '../components/ContextSidebar.jsx';
 
-const welcomeMessage = {
-  id: 'welcome',
-  role: 'assistant',
-  content: `Welcome to **Galactus AI** — your AI orchestration workspace for developers.
-
-I'm ready to help you **build, debug, explain, and modify code** across your projects.
-
-**What I can do:**
-• Write and refactor code in any language
-• Debug errors and explain complex logic
-• Generate tests, documentation, and configs
-• Work with your existing codebase context
-• Orchestrate across multiple AI providers
-
-**Get started:** Select a model and provider combo above, then type your request below.`,
-  timestamp: 'Now'
-};
-
 export default function HomePage() {
-  const [messages, setMessages] = useState([welcomeMessage]);
+  const [messages, setMessages] = useState([]);
   const [isStreaming, setIsStreaming] = useState(false);
   const [terminalOpen, setTerminalOpen] = useState(false);
   const [contextOpen, setContextOpen] = useState(false);
@@ -144,7 +126,7 @@ You said: "${text}"
   }, []);
 
   const handleNewChat = useCallback(() => {
-    setMessages([welcomeMessage]);
+    setMessages([]);
     setIsStreaming(false);
     setMessageIdCounter(1);
   }, []);
@@ -162,7 +144,7 @@ You said: "${text}"
     <div className="chat-workspace">
       {/* Main Chat Area */}
       <main className="chat-main" ref={chatContainerRef} role="main">
-        {/* Chat Header */}
+        {/* Chat Header - minimal */}
         <header className="chat-header">
           <div className="chat-header-left">
             <button
@@ -174,10 +156,6 @@ You said: "${text}"
               <span aria-hidden="true">➕</span>
             </button>
             <h1 className="chat-title">New Conversation</h1>
-            <span className="chat-status">
-              <span className="status-dot ready" aria-hidden="true"></span>
-              Ready
-            </span>
           </div>
           <div className="chat-header-right">
             <ContextSidebar
@@ -194,9 +172,15 @@ You said: "${text}"
           </div>
         </header>
 
-        {/* Messages Area */}
+        {/* Messages Area - centered empty state */}
         <div className="chat-messages" role="log" aria-live="polite" aria-label="Conversation">
           <div className="messages-inner">
+            {/* Centered Welcome State */}
+            <div className="welcome-state">
+              <h1 className="welcome-title">Welcome to Galactus AI</h1>
+            </div>
+
+            {/* Messages */}
             {messages.map((message, index) => (
               <ChatMessage
                 key={message.id || `${message.role}-${index}`}
@@ -218,8 +202,6 @@ You said: "${text}"
           placeholder={isStreaming ? 'Galactus is thinking...' : 'Message Galactus...'}
         />
       </main>
-
-      {/* Terminal & Context are rendered inline via ContextSidebar and Terminal components */}
     </div>
   );
 }
