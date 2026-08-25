@@ -1,20 +1,46 @@
 /* Galactus AI - Provider Config Routes */
 import express from 'express';
 import jwt from 'jsonwebtoken';
-import { getDb, generateId, encrypt, decrypt, now } from '../db/database.js';
+import { providerService } from '../providers/ProviderService.js';
+import { getProviderMetadata, getAllProvidersMetadata, getAvailableProviders } from '../providers/index.js';
 
 const router = express.Router();
 
 const JWT_SECRET = process.env.JWT_SECRET || 'your-super-secret-jwt-key-change-in-production';
 
 function authenticateToken(req, res, next) {
-  const authHeader = req.headers.authorization;
+  let token = null;
 
-  if (!authHeader || !authHeader.startsWith('Bearer ')) {
-    return res.status(401).json({ error: 'No token provided' });
+  // Check Authorization header
+  const authHeader = req.headers.authorization;
+  if (authHeader && authHeader.startsWith('Bearer ')) {
+    token = authHeader.substring(7);
   }
 
-  const token = authHeader.substring(7);
+  // Check cookies - try multiple sources
+  if (!token && req.cookies && req.cookies.access_token) {
+    token = req.cookies.access_token;
+  }
+
+  // Fallback: manually parse cookie header
+  if (!token && req.headers.cookie) {
+    const cookies = req.headers.cookie.split(';').reduce((acc, cookie) => {
+      const [key, value] = cookie.trim().split('=');
+      if (key && value) acc[key] = value;
+      return acc;
+    }, {});
+    if (cookies.access_token) {
+      token = cookies.access_token;
+    }
+  }
+
+  console.log('DEBUG AUTH: token found:', !!token, 'token prefix:', token?.substring(0, 20));
+  console.log('DEBUG AUTH: req.cookies:', req.cookies);
+  console.log('DEBUG AUTH: req.headers.cookie:', req.headers.cookie);
+
+  if (!token) {
+    return res.status(401).json({ error: 'No token provided' });
+  }
 
   try {
     const decoded = jwt.verify(token, JWT_SECRET);
@@ -25,83 +51,35 @@ function authenticateToken(req, res, next) {
   }
 }
 
-// Get all provider configs for user
-router.get('/', authenticateToken, (req, res) => {
-  try {
-    const db = getDb();
-    const configs = db.prepare(`
-      SELECT id, provider, enabled, created_at, updated_at
-      FROM provider_configs
-      WHERE user_id = ?
-    `).all(req.userId);
+// Get all available provider metadata (public)
+router.get('/metadata', (req, res) => {
+  res.json({ providers: getAllProvidersMetadata() });
+});
 
-    // Don't return encrypted config
-    res.json({ providers: configs });
+// Get user's configured providers
+router.get('/', authenticateToken, async (req, res) => {
+  try {
+    const providers = await providerService.getUserProviders(req.userId);
+    res.json({ providers });
   } catch (error) {
     console.error('Get providers error:', error);
     res.status(500).json({ error: 'Failed to get providers' });
   }
 });
 
-// Save/update provider config
-router.post('/', authenticateToken, (req, res) => {
+// Get specific provider config
+router.get('/:provider', authenticateToken, async (req, res) => {
   try {
-    const { provider, config, enabled } = req.body;
+    const providerConfig = await providerService.getUserProvider(req.userId, req.params.provider);
 
-    if (!provider || !config) {
-      return res.status(400).json({ error: 'Provider and config are required' });
-    }
-
-    const db = getDb();
-    const existing = db.prepare('SELECT id FROM provider_configs WHERE user_id = ? AND provider = ?').get(req.userId, provider);
-    const timestamp = now();
-    const encryptedConfig = encrypt(JSON.stringify(config));
-
-    if (existing) {
-      db.prepare(`
-        UPDATE provider_configs SET encrypted_config = ?, enabled = ?, updated_at = ? WHERE id = ?
-      `).run(encryptedConfig, enabled ? 1 : 0, timestamp, existing.id);
-    } else {
-      const configId = generateId();
-      db.prepare(`
-        INSERT INTO provider_configs (id, user_id, provider, encrypted_config, enabled, created_at, updated_at)
-        VALUES (?, ?, ?, ?, ?, ?, ?)
-      `).run(configId, req.userId, provider, encryptedConfig, enabled ? 1 : 0, timestamp, timestamp);
-    }
-
-    res.json({ message: 'Provider configuration saved' });
-  } catch (error) {
-    console.error('Save provider error:', error);
-    res.status(500).json({ error: 'Failed to save provider configuration' });
-  }
-});
-
-// Get specific provider config (with decrypted config for editing)
-router.get('/:provider', authenticateToken, (req, res) => {
-  try {
-    const db = getDb();
-    const config = db.prepare(`
-      SELECT id, provider, encrypted_config, enabled, created_at, updated_at
-      FROM provider_configs
-      WHERE user_id = ? AND provider = ?
-    `).get(req.userId, req.params.provider);
-
-    if (!config) {
+    if (!providerConfig) {
       return res.status(404).json({ error: 'Provider configuration not found' });
-    }
-
-    // Decrypt config for editing
-    let decryptedConfig = {};
-    try {
-      decryptedConfig = JSON.parse(decrypt(config.encrypted_config));
-    } catch (e) {
-      console.error('Failed to decrypt config:', e);
     }
 
     res.json({
       provider: {
-        ...config,
-        config: decryptedConfig,
+        ...providerConfig,
+        metadata: getProviderMetadata(providerConfig.provider),
       },
     });
   } catch (error) {
@@ -110,13 +88,82 @@ router.get('/:provider', authenticateToken, (req, res) => {
   }
 });
 
-// Delete provider config
-router.delete('/:provider', authenticateToken, (req, res) => {
+// Save/update provider config
+router.post('/', authenticateToken, async (req, res) => {
   try {
-    const db = getDb();
-    const result = db.prepare('DELETE FROM provider_configs WHERE user_id = ? AND provider = ?').run(req.userId, req.params.provider);
+    const { provider, config, enabled } = req.body;
 
-    if (result.changes === 0) {
+    if (!provider || !config) {
+      return res.status(400).json({ error: 'Provider and config are required' });
+    }
+
+    // Validate provider exists
+    if (!getAvailableProviders().includes(provider)) {
+      return res.status(400).json({ error: 'Unknown provider' });
+    }
+
+    // Validate required config fields
+    const metadata = getProviderMetadata(provider);
+    if (metadata?.requiresApiKey && !config.apiKey) {
+      return res.status(400).json({ error: 'API key is required for this provider' });
+    }
+
+    await providerService.saveProviderConfig(req.userId, provider, config, enabled);
+
+    res.json({ message: 'Provider configuration saved' });
+  } catch (error) {
+    console.error('Save provider error:', error);
+    res.status(500).json({ error: 'Failed to save provider configuration' });
+  }
+});
+
+// Test provider connection
+router.post('/:provider/test', authenticateToken, async (req, res) => {
+  try {
+    const result = await providerService.testProviderConnection(req.userId, req.params.provider);
+    res.json(result);
+  } catch (error) {
+    console.error('Test provider error:', error);
+    res.status(500).json({ error: 'Failed to test provider connection' });
+  }
+});
+
+// Enable/disable provider
+router.patch('/:provider/toggle', authenticateToken, async (req, res) => {
+  try {
+    const { enabled } = req.body;
+    const providerConfig = await providerService.getUserProvider(req.userId, req.params.provider);
+
+    if (!providerConfig) {
+      return res.status(404).json({ error: 'Provider configuration not found' });
+    }
+
+    await providerService.saveProviderConfig(req.userId, req.params.provider, providerConfig.config, enabled);
+
+    res.json({ message: `Provider ${enabled ? 'enabled' : 'disabled'}` });
+  } catch (error) {
+    console.error('Toggle provider error:', error);
+    res.status(500).json({ error: 'Failed to update provider status' });
+  }
+});
+
+// Get provider health
+router.get('/:provider/health', authenticateToken, async (req, res) => {
+  try {
+    const health = await providerService.getProviderHealth(req.userId, req.params.provider);
+    res.json(health);
+  } catch (error) {
+    console.error('Provider health error:', error);
+    res.status(500).json({ error: 'Failed to get provider health' });
+  }
+});
+
+// Delete provider config
+router.delete('/:provider', authenticateToken, async (req, res) => {
+  try {
+    const deleted = await providerService.deleteProviderConfig(req.userId, req.params.provider);
+
+    if (!deleted) {
       return res.status(404).json({ error: 'Provider configuration not found' });
     }
 

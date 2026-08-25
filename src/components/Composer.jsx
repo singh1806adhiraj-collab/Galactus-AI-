@@ -2,6 +2,8 @@
 import { useState, useRef, useEffect } from 'react';
 import ModelSelector from './ModelSelector.jsx';
 import ProviderComboSelector from './ProviderComboSelector.jsx';
+import { useAuth } from '../context/AuthContext.jsx';
+import api from '../services/api.js';
 
 export default function Composer({
   onSend,
@@ -17,6 +19,11 @@ export default function Composer({
   const [height, setHeight] = useState(56);
   const [showAttachMenu, setShowAttachMenu] = useState(false);
   const attachMenuRef = useRef(null);
+  const [modelProviders, setModelProviders] = useState([]);
+  const [selectedModel, setSelectedModel] = useState('gpt-4o');
+  const [selectedProvider, setSelectedProvider] = useState('openai');
+  const [selectedCombo, setSelectedCombo] = useState('flagship-fallback');
+  const { isAuthenticated, user } = useAuth();
 
   // Auto-resize textarea
   useEffect(() => {
@@ -41,6 +48,19 @@ export default function Composer({
     return () => document.removeEventListener('mousedown', handleClickOutside);
   }, [showAttachMenu]);
 
+  // Load provider metadata
+  useEffect(() => {
+    async function loadProviders() {
+      try {
+        const data = await api.getProviderMetadata();
+        setModelProviders(data.providers);
+      } catch (error) {
+        console.error('Failed to load provider metadata:', error);
+      }
+    }
+    loadProviders();
+  }, []);
+
   const handleSubmit = (e) => {
     e.preventDefault();
     if (text.trim() && !isStreaming && !disabled) {
@@ -63,22 +83,34 @@ export default function Composer({
     setShowAttachMenu(!showAttachMenu);
   };
 
+  const handleModelSelect = (modelId) => {
+    setSelectedModel(modelId);
+  };
+
+  const handleProviderSelect = (providerId) => {
+    setSelectedProvider(providerId);
+  };
+
+  const handleComboSelect = (comboId) => {
+    setSelectedCombo(comboId);
+  };
+
   return (
     <form className="composer" onSubmit={handleSubmit}>
       {/* Model/Provider Controls Row - above the main input */}
       <div className="composer-controls-row">
         <div className="composer-controls-left">
           <ModelSelector
-            selectedModel="gpt-4o"
-            onSelect={() => {}}
+            selectedModel={selectedModel}
+            onSelect={handleModelSelect}
             className="composer-model-selector"
             placeholder="Select model"
           />
           <ProviderComboSelector
-            selectedProvider="openai"
-            onSelectProvider={() => {}}
-            selectedCombo="flagship-fallback"
-            onSelectCombo={() => {}}
+            selectedProvider={selectedProvider}
+            onSelectProvider={handleProviderSelect}
+            selectedCombo={selectedCombo}
+            onSelectCombo={handleComboSelect}
             className="composer-provider-selector"
           />
         </div>
