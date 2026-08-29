@@ -25,6 +25,14 @@ app.use(cors({
 app.use(express.json());
 app.use(cookieParser()); // Regular cookie parser (not signed)
 
+// Debug cookie parsing middleware
+app.use((req, res, next) => {
+  console.log('=== REQUEST DEBUG ===', req.method, req.path);
+  console.log('  Headers cookie:', req.headers.cookie?.substring(0, 100));
+  console.log('  req.cookies:', req.cookies ? Object.keys(req.cookies) : 'none');
+  next();
+});
+
 // TEST ROUTE - REGISTER FIRST
 app.get('/api/test/cookies', (req, res) => {
   console.log('=== TEST COOKIES ENDPOINT HIT ===');

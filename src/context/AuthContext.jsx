@@ -74,10 +74,16 @@ export function AuthProvider({ children }) {
         body: JSON.stringify({ email, password, rememberMe }),
       });
 
-      const data = await response.json();
+      let data;
+      const contentType = response.headers.get('content-type');
+      if (contentType && contentType.includes('application/json')) {
+        data = await response.json();
+      } else {
+        data = {};
+      }
 
       if (!response.ok) {
-        throw new Error(data.error || 'Login failed');
+        throw new Error(data.error || `Login failed (${response.status})`);
       }
 
       setAuthState({
@@ -107,10 +113,16 @@ export function AuthProvider({ children }) {
         body: JSON.stringify({ name, email, password }),
       });
 
-      const data = await response.json();
+      let data;
+      const contentType = response.headers.get('content-type');
+      if (contentType && contentType.includes('application/json')) {
+        data = await response.json();
+      } else {
+        data = {};
+      }
 
       if (!response.ok) {
-        throw new Error(data.error || 'Registration failed');
+        throw new Error(data.error || `Registration failed (${response.status})`);
       }
 
       setAuthState({
@@ -139,10 +151,16 @@ export function AuthProvider({ children }) {
         },
       });
 
-      const data = await response.json();
+      let data;
+      const contentType = response.headers.get('content-type');
+      if (contentType && contentType.includes('application/json')) {
+        data = await response.json();
+      } else {
+        data = {};
+      }
 
       if (!response.ok) {
-        throw new Error(data.error || 'Guest login failed');
+        throw new Error(data.error || `Guest login failed (${response.status})`);
       }
 
       setAuthState({
