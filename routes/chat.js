@@ -2,6 +2,7 @@
 import express from 'express';
 import jwt from 'jsonwebtoken';
 import { providerService } from '../providers/ProviderService.js';
+import { createProvider } from '../providers/index.js';
 
 const router = express.Router();
 
@@ -119,9 +120,9 @@ router.get('/models/:provider', authenticateToken, async (req, res) => {
       return res.status(404).json({ error: 'Provider not configured' });
     }
 
-    const providerInstance = await import(`../../providers/${providerConfig.provider}Provider.js`);
-    const ProviderClass = providerInstance[`${providerConfig.provider.charAt(0).toUpperCase() + providerConfig.provider.slice(1)}Provider`];
-    const instance = new ProviderClass({ apiKey: providerConfig.config.apiKey });
+    const instance = createProvider(providerConfig.provider, {
+      apiKey: providerConfig.config.apiKey,
+    });
 
     res.json({ models: instance.getModels() });
   } catch (error) {

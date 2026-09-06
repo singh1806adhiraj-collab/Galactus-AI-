@@ -8,7 +8,7 @@ import crypto from 'crypto';
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
 
-const DB_PATH = path.join(__dirname, '..', 'data', 'galactus.db');
+const DB_PATH = process.env.DB_PATH || path.join(__dirname, '..', 'data', 'galactus.db');
 
 let db = null;
 
@@ -132,8 +132,22 @@ function createIndexes() {
 }
 
 export function getDb() {
+  // Note: initDatabase() is async; on a cold start getDb() may return null.
+  // Tests should `await initDatabase()` before any service call.
   if (!db) initDatabase();
   return db;
+}
+
+// Close and reset the connection so tests can start with a fresh database.
+export function closeDatabase() {
+  if (db) {
+    try {
+      db.close();
+    } catch (e) {
+      // Ignore close errors (e.g. already closed)
+    }
+    db = null;
+  }
 }
 
 // Helper functions

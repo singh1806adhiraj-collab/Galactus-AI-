@@ -1,29 +1,15 @@
-/* Galactus AI - Provider Registry */
-import { OpenAIProvider } from './OpenAIProvider.js';
-import { AnthropicProvider } from './AnthropicProvider.js';
-import { GeminiProvider } from './GeminiProvider.js';
-import { DeepSeekProvider } from './DeepSeekProvider.js';
-import { OpenRouterProvider } from './OpenRouterProvider.js';
-import { MistralProvider } from './MistralProvider.js';
-import { GrokProvider } from './GrokProvider.js';
-import { GroqProvider } from './GroqProvider.js';
-
-export const PROVIDER_REGISTRY = {
-  openai: OpenAIProvider,
-  anthropic: AnthropicProvider,
-  google: GeminiProvider,
-  deepseek: DeepSeekProvider,
-  openrouter: OpenRouterProvider,
-  mistral: MistralProvider,
-  xai: GrokProvider,
-  groq: GroqProvider,
-};
+/* Galactus AI - Frontend Provider Metadata & Helpers */
+// Static metadata for the UI (icons, labels, colors). The backend remains the
+// source of truth for the canonical description/requiresApiKey fields; the API
+// response is merged with this module so cards can show icons without an extra
+// round trip.
 
 export const PROVIDER_METADATA = {
   openai: {
     id: 'openai',
     name: 'OpenAI',
     color: '#00A67E',
+    icon: '🤖',
     description: 'GPT models from OpenAI',
     requiresApiKey: true,
   },
@@ -31,6 +17,7 @@ export const PROVIDER_METADATA = {
     id: 'anthropic',
     name: 'Anthropic',
     color: '#D97757',
+    icon: '✨',
     description: 'Claude models from Anthropic',
     requiresApiKey: true,
   },
@@ -38,6 +25,7 @@ export const PROVIDER_METADATA = {
     id: 'google',
     name: 'Google',
     color: '#4285F4',
+    icon: '🔮',
     description: 'Gemini models from Google',
     requiresApiKey: true,
   },
@@ -45,6 +33,7 @@ export const PROVIDER_METADATA = {
     id: 'deepseek',
     name: 'DeepSeek',
     color: '#FF6B35',
+    icon: '🔍',
     description: 'DeepSeek models',
     requiresApiKey: true,
   },
@@ -52,6 +41,7 @@ export const PROVIDER_METADATA = {
     id: 'openrouter',
     name: 'OpenRouter',
     color: '#6366F1',
+    icon: '🔀',
     description: 'Access 100+ models via OpenRouter',
     requiresApiKey: true,
   },
@@ -59,6 +49,7 @@ export const PROVIDER_METADATA = {
     id: 'mistral',
     name: 'Mistral',
     color: '#FFA500',
+    icon: '💨',
     description: 'Mistral models',
     requiresApiKey: true,
   },
@@ -66,6 +57,7 @@ export const PROVIDER_METADATA = {
     id: 'xai',
     name: 'Grok',
     color: '#000000',
+    icon: '⚙️',
     description: 'Grok models from xAI',
     requiresApiKey: true,
   },
@@ -73,18 +65,11 @@ export const PROVIDER_METADATA = {
     id: 'groq',
     name: 'Groq',
     color: '#FF6900',
+    icon: '🚀',
     description: 'High-speed inference with Groq',
     requiresApiKey: true,
   },
 };
-
-export function createProvider(providerId, config = {}) {
-  const ProviderClass = PROVIDER_REGISTRY[providerId];
-  if (!ProviderClass) {
-    throw new Error(`Unknown provider: ${providerId}`);
-  }
-  return new ProviderClass(config);
-}
 
 export function getProviderMetadata(providerId) {
   return PROVIDER_METADATA[providerId] || null;
@@ -95,5 +80,5 @@ export function getAllProvidersMetadata() {
 }
 
 export function getAvailableProviders() {
-  return Object.keys(PROVIDER_REGISTRY);
+  return Object.keys(PROVIDER_METADATA);
 }

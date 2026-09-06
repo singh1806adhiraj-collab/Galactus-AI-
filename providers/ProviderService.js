@@ -102,18 +102,29 @@ class ProviderService {
     return result.changes > 0;
   }
 
-  async testProviderConnection(userId, providerId) {
-    const providerConfig = await this.getUserProvider(userId, providerId);
-    if (!providerConfig) {
-      return { success: false, error: 'Provider not configured' };
+  async testProviderConnection(userId, providerId, providedApiKey) {
+    let apiKey = providedApiKey;
+
+    if (!apiKey) {
+      const providerConfig = await this.getUserProvider(userId, providerId);
+      if (!providerConfig) {
+        return { success: false, error: 'Provider not configured' };
+      }
+      apiKey = providerConfig.config.apiKey;
     }
 
     const provider = createProvider(providerId, {
-      apiKey: providerConfig.config.apiKey,
-      enabled: providerConfig.enabled,
+      apiKey,
+      enabled: true,
     });
 
-    return await provider.testConnection();
+    const result = await provider.testConnection();
+
+    if (result.success) {
+      result.models = provider.getModels();
+    }
+
+    return result;
   }
 
   async chatCompletion(userId, providerId, messages, options = {}) {

@@ -71,9 +71,10 @@ export const api = {
     });
   },
 
-  async testProviderConnection(providerId) {
+  async testProviderConnection(providerId, apiKey) {
     return fetchWithAuth(`/providers/${providerId}/test`, {
       method: 'POST',
+      body: JSON.stringify({ apiKey }),
     });
   },
 
@@ -92,6 +93,10 @@ export const api = {
     return fetchWithAuth(`/providers/${providerId}`, {
       method: 'DELETE',
     });
+  },
+
+  async getProviderModels(providerId) {
+    return fetchWithAuth(`/providers/${providerId}/models`);
   },
 
   // Chat

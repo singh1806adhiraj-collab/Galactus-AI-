@@ -2,7 +2,7 @@
 import express from 'express';
 import jwt from 'jsonwebtoken';
 import { providerService } from '../providers/ProviderService.js';
-import { getProviderMetadata, getAllProvidersMetadata, getAvailableProviders } from '../providers/index.js';
+import { createProvider, getProviderMetadata, getAllProvidersMetadata, getAvailableProviders } from '../providers/index.js';
 
 const router = express.Router();
 
@@ -117,14 +117,34 @@ router.post('/', authenticateToken, async (req, res) => {
   }
 });
 
-// Test provider connection
+// Test provider connection (optional apiKey tests an unsaved key)
 router.post('/:provider/test', authenticateToken, async (req, res) => {
   try {
-    const result = await providerService.testProviderConnection(req.userId, req.params.provider);
+    const result = await providerService.testProviderConnection(req.userId, req.params.provider, req.body?.apiKey);
     res.json(result);
   } catch (error) {
     console.error('Test provider error:', error);
     res.status(500).json({ error: 'Failed to test provider connection' });
+  }
+});
+
+// Get models available for a provider
+router.get('/:provider/models', authenticateToken, async (req, res) => {
+  try {
+    const providerConfig = await providerService.getUserProvider(req.userId, req.params.provider);
+
+    if (!providerConfig) {
+      return res.status(404).json({ error: 'Provider not configured' });
+    }
+
+    const provider = createProvider(req.params.provider, {
+      apiKey: providerConfig.config.apiKey,
+    });
+
+    res.json({ models: provider.getModels() });
+  } catch (error) {
+    console.error('Get provider models error:', error);
+    res.status(500).json({ error: 'Failed to get models' });
   }
 });
 
