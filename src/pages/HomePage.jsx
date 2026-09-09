@@ -4,6 +4,7 @@ import ChatMessage from '../components/ChatMessage.jsx';
 import Composer from '../components/Composer.jsx';
 import Terminal from '../components/Terminal.jsx';
 import ContextSidebar from '../components/ContextSidebar.jsx';
+import api from '../services/api.js';
 
 export default function HomePage() {
   const [messages, setMessages] = useState([]);
@@ -14,6 +15,7 @@ export default function HomePage() {
   const [messageIdCounter, setMessageIdCounter] = useState(1);
   const messagesEndRef = useRef(null);
   const chatContainerRef = useRef(null);
+  const abortControllerRef = useRef(null);
 
   const scrollToBottom = useCallback(() => {
     messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
@@ -56,7 +58,7 @@ export default function HomePage() {
     return () => document.removeEventListener('keydown', handleKeyDown);
   }, [terminalOpen, contextOpen, isStreaming]);
 
-  const handleSend = useCallback((text) => {
+  const handleSend = useCallback(async (text, options = {}) => {
     let nextId = 1;
     setMessageIdCounter(prev => {
       nextId = prev;
@@ -73,14 +75,12 @@ export default function HomePage() {
     setMessages(prev => [...prev, userMessage]);
     setIsStreaming(true);
 
-    // Simulate streaming response (placeholder for future AI integration)
     let assistantIdNum = 0;
     setMessageIdCounter(prev => {
       assistantIdNum = prev;
       return prev + 1;
     });
     const assistantId = `msg-${assistantIdNum}`;
-    let streamedContent = '';
 
     const assistantMessage = {
       id: assistantId,
@@ -91,37 +91,43 @@ export default function HomePage() {
 
     setMessages(prev => [...prev, assistantMessage]);
 
-    // Simulate streaming chunks
-    const fullResponse = `This is a **placeholder response**. The AI integration will be connected in a future task.
+    // Create abort controller for stop functionality
+    abortControllerRef.current = new AbortController();
 
-You said: "${text}"
+    try {
+      let streamedContent = '';
 
-**Next steps for Phase 3:**
-1. Connect AI provider APIs (OpenAI, Anthropic, Google, DeepSeek, OpenRouter)
-2. Implement streaming responses with Server-Sent Events
-3. Add tool/function calling for file operations
-4. Implement conversation persistence
-5. Add code execution in terminal
-6. Build provider health monitoring
-
-*Model: GPT-4o • Provider: OpenAI • Combo: Flagship Fallback*`;
-
-    let charIndex = 0;
-    const streamInterval = setInterval(() => {
-      if (charIndex < fullResponse.length) {
-        streamedContent += fullResponse[charIndex];
-        charIndex++;
+      // Use the streamMessage API for streaming responses
+      for await (const chunk of api.streamMessage([
+        { role: 'user', content: text }
+      ], {
+        provider: options.provider || 'openai',
+        model: options.model || 'gpt-4o',
+        signal: abortControllerRef.current.signal,
+      })) {
+        streamedContent += chunk;
         setMessages(prev => prev.map(msg =>
           msg.id === assistantId ? { ...msg, content: streamedContent } : msg
         ));
-      } else {
-        clearInterval(streamInterval);
-        setIsStreaming(false);
       }
-    }, 8); // ~125 chars/sec
+    } catch (error) {
+      if (error.name !== 'AbortError') {
+        console.error('Chat error:', error);
+        const errorMessage = error.message || 'Failed to get response from AI';
+        setMessages(prev => prev.map(msg =>
+          msg.id === assistantId ? { ...msg, content: `**Error:** ${errorMessage}` } : msg
+        ));
+      }
+    } finally {
+      setIsStreaming(false);
+      abortControllerRef.current = null;
+    }
   }, [messageIdCounter]);
 
   const handleStop = useCallback(() => {
+    if (abortControllerRef.current) {
+      abortControllerRef.current.abort();
+    }
     setIsStreaming(false);
   }, []);
 
@@ -139,6 +145,11 @@ You said: "${text}"
   const handleTerminalCommand = useCallback((cmd) => {
     console.log('Terminal command:', cmd);
   }, []);
+
+  // Wrap handleSend to accept options from Composer
+  const handleSendWithOptions = useCallback((text, options) => {
+    handleSend(text, options);
+  }, [handleSend]);
 
   return (
     <div className="chat-workspace">
@@ -176,9 +187,11 @@ You said: "${text}"
         <div className="chat-messages" role="log" aria-live="polite" aria-label="Conversation">
           <div className="messages-inner">
             {/* Centered Welcome State */}
-            <div className="welcome-state">
-              <h1 className="welcome-title">Welcome to Galactus AI</h1>
-            </div>
+            {messages.length === 0 && (
+              <div className="welcome-state">
+                <h1 className="welcome-title">Welcome to Galactus AI</h1>
+              </div>
+            )}
 
             {/* Messages */}
             {messages.map((message, index) => (
@@ -194,7 +207,7 @@ You said: "${text}"
 
         {/* Composer */}
         <Composer
-          onSend={handleSend}
+          onSend={handleSendWithOptions}
           onStop={handleStop}
           onAttachFiles={handleAttachFiles}
           onNewChat={handleNewChat}

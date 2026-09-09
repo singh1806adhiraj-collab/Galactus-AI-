@@ -102,8 +102,9 @@ class ProviderService {
     return result.changes > 0;
   }
 
-  async testProviderConnection(userId, providerId, providedApiKey) {
+  async testProviderConnection(userId, providerId, providedApiKey, providedBaseUrl) {
     let apiKey = providedApiKey;
+    let baseUrl = providedBaseUrl;
 
     if (!apiKey) {
       const providerConfig = await this.getUserProvider(userId, providerId);
@@ -111,11 +112,13 @@ class ProviderService {
         return { success: false, error: 'Provider not configured' };
       }
       apiKey = providerConfig.config.apiKey;
+      baseUrl = providerConfig.config.baseUrl;
     }
 
     const provider = createProvider(providerId, {
       apiKey,
       enabled: true,
+      baseUrl,
     });
 
     const result = await provider.testConnection();
@@ -140,6 +143,7 @@ class ProviderService {
     const provider = createProvider(providerId, {
       apiKey: providerConfig.config.apiKey,
       enabled: true,
+      baseUrl: providerConfig.config.baseUrl,
     });
 
     const model = options.model || provider.getDefaultModel();
@@ -187,6 +191,7 @@ class ProviderService {
     const provider = createProvider(providerId, {
       apiKey: providerConfig.config.apiKey,
       enabled: true,
+      baseUrl: providerConfig.config.baseUrl,
     });
 
     const model = options.model || provider.getDefaultModel();

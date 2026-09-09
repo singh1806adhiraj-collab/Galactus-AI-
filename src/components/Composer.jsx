@@ -64,7 +64,11 @@ export default function Composer({
   const handleSubmit = (e) => {
     e.preventDefault();
     if (text.trim() && !isStreaming && !disabled) {
-      onSend(text.trim());
+      onSend(text.trim(), {
+        provider: selectedProvider,
+        model: selectedModel,
+        combo: selectedCombo,
+      });
       setText('');
       setHeight(56);
     }

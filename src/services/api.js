@@ -71,10 +71,10 @@ export const api = {
     });
   },
 
-  async testProviderConnection(providerId, apiKey) {
+  async testProviderConnection(providerId, apiKey, baseUrl) {
     return fetchWithAuth(`/providers/${providerId}/test`, {
       method: 'POST',
-      body: JSON.stringify({ apiKey }),
+      body: JSON.stringify({ apiKey, baseUrl }),
     });
   },
 
@@ -108,45 +108,62 @@ export const api = {
   },
 
   async *streamMessage(messages, options = {}) {
-    const response = await fetch(`${API_BASE}/chat/stream`, {
-      method: 'POST',
-      credentials: 'include',
-      headers: {
-        'Content-Type': 'application/json',
-      },
-      body: JSON.stringify({ messages, ...options }),
-    });
+    const controller = new AbortController();
+    const timeoutId = setTimeout(() => controller.abort(), 180000); // 180 second timeout
 
-    if (!response.ok) {
-      const error = await response.json().catch(() => ({ error: 'Stream failed' }));
-      throw new Error(error.error || 'Stream failed');
-    }
+    try {
+      const response = await fetch(`${API_BASE}/chat/stream`, {
+        method: 'POST',
+        credentials: 'include',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({ messages, ...options }),
+        signal: controller.signal,
+      });
 
-    const reader = response.body.getReader();
-    const decoder = new TextDecoder();
+      clearTimeout(timeoutId);
 
-    while (true) {
-      const { done, value } = await reader.read();
-      if (done) break;
+      if (!response.ok) {
+        const error = await response.json().catch(() => ({ error: 'Stream failed' }));
+        throw new Error(error.error || 'Stream failed');
+      }
 
-      const chunk = decoder.decode(value);
-      const lines = chunk.split('\n').filter(line => line.trim());
+      const reader = response.body.getReader();
+      const decoder = new TextDecoder();
 
-      for (const line of lines) {
-        if (line.startsWith('data: ')) {
-          const data = line.slice(6);
-          if (data === '[DONE]') return;
+      while (true) {
+        const { done, value } = await reader.read();
+        if (done) break;
 
-          try {
-            const parsed = JSON.parse(data);
-            if (parsed.content) {
-              yield parsed.content;
+        const chunk = decoder.decode(value);
+        const lines = chunk.split('\n').filter(line => line.trim());
+
+        for (const line of lines) {
+          if (line.startsWith('data: ')) {
+            const data = line.slice(6);
+            if (data === '[DONE]') return;
+
+            try {
+              const parsed = JSON.parse(data);
+              if (parsed.error) {
+                throw new Error(parsed.error);
+              }
+              if (parsed.content) {
+                yield parsed.content;
+              }
+            } catch (e) {
+              // Ignore parse errors
             }
-          } catch (e) {
-            // Ignore parse errors
           }
         }
       }
+    } catch (error) {
+      clearTimeout(timeoutId);
+      if (error.name === 'AbortError') {
+        throw new Error('Request timeout - server did not respond within 3 minutes');
+      }
+      throw error;
     }
   },
 

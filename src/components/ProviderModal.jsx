@@ -6,6 +6,7 @@ import { getProviderMetadata } from '../providers/index.js';
 const INITIAL_FORM_STATE = {
   provider: '',
   apiKey: '',
+  baseUrl: '',
   enabled: true,
 };
 
@@ -66,16 +67,17 @@ export default function ProviderModal({
         setFormData({
           provider: providerToEdit.provider,
           apiKey: providerToEdit.config?.apiKey || '',
+          baseUrl: providerToEdit.config?.baseUrl || '',
           enabled: providerToEdit.enabled !== false,
         });
       } else {
         // Adding new provider
-        setFormData({ provider: '', apiKey: '', enabled: true });
+        setFormData({ provider: '', apiKey: '', baseUrl: '', enabled: true });
       }
       setStatus('idle');
       setError(null);
     } else {
-      setFormData({ provider: '', apiKey: '', enabled: true });
+      setFormData({ provider: '', apiKey: '', baseUrl: '', enabled: true });
       setStatus('idle');
       setError(null);
     }
@@ -110,9 +112,13 @@ export default function ProviderModal({
     setError(null);
 
     try {
+      const config = { apiKey: formData.apiKey };
+      if (formData.baseUrl) {
+        config.baseUrl = formData.baseUrl;
+      }
       await api.saveProviderConfig(
         formData.provider,
-        { apiKey: formData.apiKey },
+        config,
         formData.enabled
       );
       setStatus('saving_success');
@@ -136,7 +142,7 @@ export default function ProviderModal({
     setError(null);
 
     try {
-      const result = await onTestConnection(formData.provider, formData.apiKey);
+      const result = await onTestConnection(formData.provider, formData.apiKey, formData.baseUrl);
       if (result.success) {
         setStatus('testing_success');
         setTimeout(() => setStatus('idle'), 2000);
@@ -233,6 +239,20 @@ export default function ProviderModal({
               </button>
             </div>
             <p className="form-hint">Your API key will be encrypted and stored securely. Never shared or exposed.</p>
+          </div>
+
+          <div className="form-group">
+            <label htmlFor="baseUrl" className="form-label">Base URL (Optional)</label>
+            <input
+              id="baseUrl"
+              type="text"
+              className="form-input"
+              value={formData.baseUrl}
+              onChange={(e) => handleInputChange('baseUrl', e.target.value)}
+              placeholder="e.g., http://localhost:20128/v1"
+              disabled={status === 'saving' || status === 'testing'}
+            />
+            <p className="form-hint">Custom API base URL for local routers (e.g., 9Router, OpenRouter). Leave empty for default.</p>
           </div>
 
           <div className="form-group">

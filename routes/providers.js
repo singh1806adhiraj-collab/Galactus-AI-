@@ -120,7 +120,7 @@ router.post('/', authenticateToken, async (req, res) => {
 // Test provider connection (optional apiKey tests an unsaved key)
 router.post('/:provider/test', authenticateToken, async (req, res) => {
   try {
-    const result = await providerService.testProviderConnection(req.userId, req.params.provider, req.body?.apiKey);
+    const result = await providerService.testProviderConnection(req.userId, req.params.provider, req.body?.apiKey, req.body?.baseUrl);
     res.json(result);
   } catch (error) {
     console.error('Test provider error:', error);
