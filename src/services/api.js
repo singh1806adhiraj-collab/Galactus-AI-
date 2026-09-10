@@ -108,6 +108,12 @@ export const api = {
   },
 
   async *streamMessage(messages, options = {}) {
+    console.log('[DEBUG] api.streamMessage called:', {
+      messagesCount: messages.length,
+      provider: options.provider,
+      model: options.model
+    });
+
     const controller = new AbortController();
     const timeoutId = setTimeout(() => controller.abort(), 180000); // 180 second timeout
 
@@ -124,6 +130,12 @@ export const api = {
 
       clearTimeout(timeoutId);
 
+      console.log('[DEBUG] Stream response:', {
+        ok: response.ok,
+        status: response.status,
+        contentType: response.headers.get('content-type')
+      });
+
       if (!response.ok) {
         const error = await response.json().catch(() => ({ error: 'Stream failed' }));
         throw new Error(error.error || 'Stream failed');
@@ -131,29 +143,53 @@ export const api = {
 
       const reader = response.body.getReader();
       const decoder = new TextDecoder();
+      let chunkCount = 0;
+
+      let contentChunksYielded = 0;
 
       while (true) {
         const { done, value } = await reader.read();
-        if (done) break;
+        if (done) {
+          console.log('[DEBUG] Stream reader done, total SSE chunks:', chunkCount, 'content chunks yielded:', contentChunksYielded);
 
+          // If we never yielded any content, the provider returned an empty response
+          if (contentChunksYielded === 0) {
+            throw new Error('Provider returned empty response - check API key and model configuration');
+          }
+          break;
+        }
+
+        chunkCount++;
         const chunk = decoder.decode(value);
+
+        if (chunkCount <= 3) {
+          console.log(`[DEBUG] Raw SSE chunk ${chunkCount}:`, chunk.substring(0, 200));
+        }
+
         const lines = chunk.split('\n').filter(line => line.trim());
 
         for (const line of lines) {
           if (line.startsWith('data: ')) {
             const data = line.slice(6);
-            if (data === '[DONE]') return;
+            if (data === '[DONE]') {
+              console.log('[DEBUG] Received [DONE] marker');
+              return;
+            }
 
             try {
               const parsed = JSON.parse(data);
               if (parsed.error) {
+                console.error('[DEBUG] Server error in stream:', parsed.error);
                 throw new Error(parsed.error);
               }
               if (parsed.content) {
+                contentChunksYielded++;
+                console.log('[DEBUG] Yielding content:', parsed.content.substring(0, 50));
                 yield parsed.content;
               }
             } catch (e) {
               // Ignore parse errors
+              console.warn('[DEBUG] Parse error:', e.message, 'for line:', line);
             }
           }
         }
@@ -163,6 +199,7 @@ export const api = {
       if (error.name === 'AbortError') {
         throw new Error('Request timeout - server did not respond within 3 minutes');
       }
+      console.error('[DEBUG] Stream error:', error);
       throw error;
     }
   },

@@ -13,12 +13,94 @@ export class OpenAIProvider extends BaseProvider {
   }
 
   getModels() {
-    return [
+    // Default models for official OpenAI API
+    const defaultModels = [
       { id: 'gpt-4o', name: 'GPT-4o', context: '128k', tier: 'flagship' },
       { id: 'gpt-4o-mini', name: 'GPT-4o Mini', context: '128k', tier: 'fast' },
       { id: 'gpt-4-turbo', name: 'GPT-4 Turbo', context: '128k', tier: 'flagship' },
       { id: 'gpt-3.5-turbo', name: 'GPT-3.5 Turbo', context: '16k', tier: 'fast' },
     ];
+
+    // If using a custom baseUrl (not official OpenAI), we should fetch models from the API
+    // This is handled asynchronously via fetchModels() method
+    return defaultModels;
+  }
+
+  // Cache for dynamically fetched models
+  _cachedModels = null;
+  _modelsFetched = false;
+
+  async _getAllModels() {
+    if (this._modelsFetched && this._cachedModels) {
+      return this._cachedModels;
+    }
+
+    const models = await this.fetchModels();
+    this._cachedModels = models;
+    this._modelsFetched = true;
+    return models;
+  }
+
+  validateModel(model) {
+    // For synchronous validation, use cached models or fallback
+    const models = this._cachedModels || this.getModels();
+    return models.some(m => m.id === model);
+  }
+
+  async validateModelAsync(model) {
+    // Async validation that fetches models if needed
+    const models = await this._getAllModels();
+    return models.some(m => m.id === model);
+  }
+
+  async fetchModels() {
+    if (!this.apiKey) {
+      return this.getModels();
+    }
+
+    // Only fetch dynamically if using a custom baseUrl (not official OpenAI)
+    const isOfficialOpenAI = this.baseUrl === 'https://api.openai.com/v1' || this.baseUrl === 'https://api.openai.com/v1/';
+
+    if (isOfficialOpenAI) {
+      return this.getModels();
+    }
+
+    try {
+      const controller = new AbortController();
+      const timeoutId = setTimeout(() => controller.abort(), 15000);
+
+      const response = await fetch(`${this.baseUrl}/models`, {
+        method: 'GET',
+        headers: {
+          'Authorization': `Bearer ${this.apiKey}`,
+        },
+        signal: controller.signal,
+      });
+
+      clearTimeout(timeoutId);
+
+      if (!response.ok) {
+        console.warn('[DEBUG] fetchModels failed:', response.status);
+        return this.getModels();
+      }
+
+      const data = await response.json();
+
+      // Convert OpenAI-compatible model list to our format
+      if (data.data && Array.isArray(data.data)) {
+        return data.data.map(model => ({
+          id: model.id,
+          name: model.id,
+          context: model.context_length ? `${Math.round(model.context_length / 1000)}k` : 'unknown',
+          tier: 'custom'
+        }));
+      }
+
+      return this.getModels();
+    } catch (error) {
+      console.warn('[DEBUG] fetchModels error:', error.message);
+      return this.getModels();
+    }
   }
 
   async testConnection() {

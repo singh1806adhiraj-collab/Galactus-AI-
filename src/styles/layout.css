@@ -1073,18 +1073,12 @@
   transition: transform var(--transition-fast);
 }
 
+/* Portal-rendered dropdown - positioning handled inline via React */
 .model-selector-dropdown {
-  position: absolute;
-  top: calc(100% + var(--space-2));
-  left: 0;
-  right: 0;
-  min-width: 280px;
-  max-width: 360px;
   background: var(--color-bg-surface);
   border: 1px solid var(--color-border-primary);
   border-radius: var(--radius-lg);
   box-shadow: var(--shadow-xl);
-  z-index: var(--z-dropdown);
   overflow: hidden;
   animation: slideDown 0.15s ease-out;
 }
@@ -1301,18 +1295,12 @@
   transition: transform var(--transition-fast);
 }
 
+/* Portal-rendered dropdown - positioning handled inline via React */
 .selector-dropdown {
-  position: absolute;
-  top: calc(100% + var(--space-2));
-  left: 0;
-  right: 0;
-  min-width: 280px;
-  max-width: 420px;
   background: var(--color-bg-surface);
   border: 1px solid var(--color-border-primary);
   border-radius: var(--radius-lg);
   box-shadow: var(--shadow-xl);
-  z-index: var(--z-dropdown);
   overflow: hidden;
   animation: slideDown 0.15s ease-out;
 }

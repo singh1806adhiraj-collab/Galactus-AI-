@@ -1,5 +1,5 @@
 /* Galactus AI - Model Selector Component */
-import { useState, useRef, useEffect } from 'react';
+import { useState, useRef, useEffect, useCallback } from 'react';
 import { createPortal } from 'react-dom';
 
 const models = [
@@ -25,15 +25,24 @@ const tierLabels = {
   reasoning: 'Reasoning',
 };
 
-function ModelSelectorDropdown({ isOpen, searchQuery, setSearchQuery, filteredModels, selectedModel, onSelect, setIsOpen, inputRef, dropdownRef }) {
-  if (!isOpen) return null;
+function ModelSelectorDropdown({ isOpen, searchQuery, setSearchQuery, filteredModels, selectedModel, onSelect, setIsOpen, inputRef, dropdownRef, triggerRect }) {
+  if (!isOpen || !triggerRect) return null;
+
+  const dropdownStyle = {
+    position: 'fixed',
+    top: `${triggerRect.bottom + 8}px`,
+    left: `${triggerRect.left}px`,
+    minWidth: '300px',
+    maxWidth: '380px',
+    zIndex: 9999,
+  };
 
   return createPortal(
     <div
       ref={dropdownRef}
       className="model-selector-dropdown"
       role="listbox"
-      style={{ zIndex: 9999 }}
+      style={dropdownStyle}
     >
       <div className="model-selector-search">
         <input
@@ -92,9 +101,16 @@ function ModelSelectorDropdown({ isOpen, searchQuery, setSearchQuery, filteredMo
 export default function ModelSelector({ selectedModel, onSelect, className = '', placeholder = 'Select model' }) {
   const [isOpen, setIsOpen] = useState(false);
   const [searchQuery, setSearchQuery] = useState('');
+  const [triggerRect, setTriggerRect] = useState(null);
   const dropdownRef = useRef(null);
   const inputRef = useRef(null);
   const triggerRef = useRef(null);
+
+  const updateTriggerRect = useCallback(() => {
+    if (triggerRef.current) {
+      setTriggerRect(triggerRef.current.getBoundingClientRect());
+    }
+  }, []);
 
   useEffect(() => {
     function handleClickOutside(event) {
@@ -108,6 +124,18 @@ export default function ModelSelector({ selectedModel, onSelect, className = '',
     return () => document.removeEventListener('mousedown', handleClickOutside);
   }, []);
 
+  // Update trigger rect on scroll/resize when open
+  useEffect(() => {
+    if (!isOpen) return;
+    updateTriggerRect();
+    window.addEventListener('scroll', updateTriggerRect, true);
+    window.addEventListener('resize', updateTriggerRect);
+    return () => {
+      window.removeEventListener('scroll', updateTriggerRect, true);
+      window.removeEventListener('resize', updateTriggerRect);
+    };
+  }, [isOpen, updateTriggerRect]);
+
   const filteredModels = models.filter(model =>
     model.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
     model.provider.toLowerCase().includes(searchQuery.toLowerCase())
@@ -115,20 +143,32 @@ export default function ModelSelector({ selectedModel, onSelect, className = '',
 
   const currentModel = models.find(m => m.id === selectedModel) || models[0];
 
+  const handleToggle = () => {
+    const newIsOpen = !isOpen;
+    setIsOpen(newIsOpen);
+    if (newIsOpen) {
+      // Update rect immediately when opening
+      setTimeout(() => {
+        updateTriggerRect();
+        inputRef.current?.focus();
+      }, 0);
+    }
+  };
+
   return (
     <div className={`model-selector ${className}`} ref={triggerRef}>
       <button
         type="button"
         className={`model-selector-trigger ${isOpen ? 'open' : ''}`}
-        onClick={() => {
-          setIsOpen(!isOpen);
-          if (!isOpen) setTimeout(() => inputRef.current?.focus(), 0);
-        }}
+        onClick={handleToggle}
         onKeyDown={(event) => {
           if (event.key === 'ArrowDown') {
             event.preventDefault();
             setIsOpen(true);
-            setTimeout(() => inputRef.current?.focus(), 0);
+            setTimeout(() => {
+              updateTriggerRect();
+              inputRef.current?.focus();
+            }, 0);
           }
         }}
         aria-haspopup="listbox"
@@ -151,6 +191,7 @@ export default function ModelSelector({ selectedModel, onSelect, className = '',
         setIsOpen={setIsOpen}
         inputRef={inputRef}
         dropdownRef={dropdownRef}
+        triggerRect={triggerRect}
       />
     </div>
   );

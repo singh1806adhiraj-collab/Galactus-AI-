@@ -59,6 +59,7 @@ export default function HomePage() {
   }, [terminalOpen, contextOpen, isStreaming]);
 
   const handleSend = useCallback(async (text, options = {}) => {
+    console.log('[DEBUG] handleSend called:', { text, options });
     let nextId = 1;
     setMessageIdCounter(prev => {
       nextId = prev;
@@ -96,6 +97,7 @@ export default function HomePage() {
 
     try {
       let streamedContent = '';
+      let chunkCount = 0;
 
       // Use the streamMessage API for streaming responses
       for await (const chunk of api.streamMessage([
@@ -105,12 +107,21 @@ export default function HomePage() {
         model: options.model || 'gpt-4o',
         signal: abortControllerRef.current.signal,
       })) {
+        chunkCount++;
         streamedContent += chunk;
+        console.log(`[DEBUG] Received chunk ${chunkCount}:`, chunk.substring(0, 50));
         setMessages(prev => prev.map(msg =>
           msg.id === assistantId ? { ...msg, content: streamedContent } : msg
         ));
       }
+      console.log('[DEBUG] Stream completed, total chunks:', chunkCount, 'total content:', streamedContent.length);
+
+      // If no chunks received, show a message
+      if (chunkCount === 0) {
+        console.warn('[DEBUG] No chunks received from stream - provider may be misconfigured');
+      }
     } catch (error) {
+      console.error('[DEBUG] handleSend error:', error);
       if (error.name !== 'AbortError') {
         console.error('Chat error:', error);
         const errorMessage = error.message || 'Failed to get response from AI';

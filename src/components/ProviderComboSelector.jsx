@@ -1,5 +1,5 @@
 /* Galactus AI - Provider/Combo Selector Component */
-import { useState, useRef, useEffect } from 'react';
+import { useState, useRef, useEffect, useCallback } from 'react';
 import { createPortal } from 'react-dom';
 
 const providers = [
@@ -29,15 +29,24 @@ const statusLabels = {
   down: 'Down',
 };
 
-function SelectorDropdown({ isOpen, activeTab, selectedProvider, onSelectProvider, selectedCombo, onSelectCombo, setIsOpen, dropdownRef }) {
-  if (!isOpen) return null;
+function SelectorDropdown({ isOpen, activeTab, selectedProvider, onSelectProvider, selectedCombo, onSelectCombo, setIsOpen, dropdownRef, triggerRect }) {
+  if (!isOpen || !triggerRect) return null;
+
+  const dropdownStyle = {
+    position: 'fixed',
+    top: `${triggerRect.bottom + 8}px`,
+    left: `${triggerRect.left}px`,
+    minWidth: '300px',
+    maxWidth: '440px',
+    zIndex: 9999,
+  };
 
   return createPortal(
     <div
       ref={dropdownRef}
       className="selector-dropdown"
       role="listbox"
-      style={{ zIndex: 9999 }}
+      style={dropdownStyle}
     >
       {activeTab === 'providers' ? (
         <div className="selector-list" id="providers-panel" role="tabpanel" aria-labelledby="providers-tab">
@@ -120,8 +129,15 @@ export default function ProviderComboSelector({
 }) {
   const [activeTab, setActiveTab] = useState('providers');
   const [isOpen, setIsOpen] = useState(false);
+  const [triggerRect, setTriggerRect] = useState(null);
   const dropdownRef = useRef(null);
   const triggerRef = useRef(null);
+
+  const updateTriggerRect = useCallback(() => {
+    if (triggerRef.current) {
+      setTriggerRect(triggerRef.current.getBoundingClientRect());
+    }
+  }, []);
 
   useEffect(() => {
     function handleClickOutside(event) {
@@ -135,8 +151,29 @@ export default function ProviderComboSelector({
     return () => document.removeEventListener('mousedown', handleClickOutside);
   }, []);
 
+  // Update trigger rect on scroll/resize when open
+  useEffect(() => {
+    if (!isOpen) return;
+    updateTriggerRect();
+    window.addEventListener('scroll', updateTriggerRect, true);
+    window.addEventListener('resize', updateTriggerRect);
+    return () => {
+      window.removeEventListener('scroll', updateTriggerRect, true);
+      window.removeEventListener('resize', updateTriggerRect);
+    };
+  }, [isOpen, updateTriggerRect]);
+
   const currentProvider = providers.find(p => p.id === selectedProvider) || providers[0];
   const currentCombo = combos.find(c => c.id === selectedCombo) || combos[0];
+
+  const handleToggle = () => {
+    const newIsOpen = !isOpen;
+    setIsOpen(newIsOpen);
+    if (newIsOpen) {
+      // Update rect immediately when opening
+      setTimeout(() => updateTriggerRect(), 0);
+    }
+  };
 
   return (
     <div className={`provider-combo-selector ${className}`} ref={triggerRef}>
@@ -166,7 +203,7 @@ export default function ProviderComboSelector({
       <button
         ref={triggerRef}
         className={`selector-trigger ${isOpen ? 'open' : ''}`}
-        onClick={() => setIsOpen(!isOpen)}
+        onClick={handleToggle}
         aria-haspopup="listbox"
         aria-expanded={isOpen}
         aria-label={activeTab === 'providers' ? 'Select provider' : 'Select combo'}
@@ -198,6 +235,7 @@ export default function ProviderComboSelector({
         onSelectCombo={onSelectCombo}
         setIsOpen={setIsOpen}
         dropdownRef={dropdownRef}
+        triggerRect={triggerRect}
       />
     </div>
   );

@@ -147,7 +147,11 @@ class ProviderService {
     });
 
     const model = options.model || provider.getDefaultModel();
-    if (!provider.validateModel(model)) {
+    // Use async validation for providers that support it (e.g., OpenAI with dynamic models)
+    const isModelValid = typeof provider.validateModelAsync === 'function'
+      ? await provider.validateModelAsync(model)
+      : provider.validateModel(model);
+    if (!isModelValid) {
       throw new Error(`Model ${model} not supported by ${providerId}`);
     }
 
@@ -179,10 +183,19 @@ class ProviderService {
   }
 
   async *streamChatCompletion(userId, providerId, messages, options = {}) {
+    console.log('[DEBUG] ProviderService.streamChatCompletion:', { userId, providerId, messagesCount: messages.length, model: options.model });
+
     const providerConfig = await this.getUserProvider(userId, providerId);
     if (!providerConfig) {
       throw new Error('Provider not configured');
     }
+
+    console.log('[DEBUG] Provider config:', {
+      enabled: providerConfig.enabled,
+      hasApiKey: !!providerConfig.config.apiKey,
+      apiKeyPrefix: providerConfig.config.apiKey?.substring(0, 10),
+      baseUrl: providerConfig.config.baseUrl
+    });
 
     if (!providerConfig.enabled) {
       throw new Error('Provider is disabled');
@@ -195,7 +208,11 @@ class ProviderService {
     });
 
     const model = options.model || provider.getDefaultModel();
-    if (!provider.validateModel(model)) {
+    // Use async validation for providers that support it (e.g., OpenAI with dynamic models)
+    const isModelValid = typeof provider.validateModelAsync === 'function'
+      ? await provider.validateModelAsync(model)
+      : provider.validateModel(model);
+    if (!isModelValid) {
       throw new Error(`Model ${model} not supported by ${providerId}`);
     }
 
@@ -203,10 +220,15 @@ class ProviderService {
     let totalTokens = { input: 0, output: 0 };
 
     try {
+      console.log('[DEBUG] Calling provider.streamChatCompletion...');
+      let chunkCount = 0;
       for await (const chunk of provider.streamChatCompletion(messages, { ...options, model })) {
+        chunkCount++;
         totalTokens.output++;
+        console.log(`[DEBUG] ProviderService yielded chunk ${chunkCount}:`, chunk.substring(0, 50));
         yield chunk;
       }
+      console.log('[DEBUG] ProviderService stream completed, total chunks:', chunkCount);
 
       // Log usage (approximate)
       await this.logUsage(userId, providerId, model, {
@@ -216,6 +238,7 @@ class ProviderService {
         status: 'success',
       });
     } catch (error) {
+      console.error('[DEBUG] ProviderService stream error:', error);
       await this.logUsage(userId, providerId, model, {
         inputTokens: 0,
         outputTokens: 0,

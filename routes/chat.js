@@ -74,6 +74,14 @@ router.post('/complete', authenticateToken, async (req, res) => {
 
 // Streaming chat completion
 router.post('/stream', authenticateToken, async (req, res) => {
+  console.log('[DEBUG] /api/chat/stream called');
+  console.log('[DEBUG] Request body:', {
+    messagesCount: req.body?.messages?.length,
+    provider: req.body?.provider,
+    model: req.body?.model,
+    userId: req.userId
+  });
+
   try {
     const { messages, provider, model, options } = req.body;
 
@@ -91,19 +99,25 @@ router.post('/stream', authenticateToken, async (req, res) => {
     res.setHeader('Connection', 'keep-alive');
     res.flushHeaders();
 
+    console.log('[DEBUG] SSE headers sent, starting provider stream...');
+
     let totalContent = '';
+    let chunkCount = 0;
 
     for await (const chunk of providerService.streamChatCompletion(req.userId, provider, messages, {
       model,
     })) {
+      chunkCount++;
       totalContent += chunk;
+      console.log(`[DEBUG] Provider chunk ${chunkCount}:`, chunk.substring(0, 50));
       res.write(`data: ${JSON.stringify({ content: chunk })}\n\n`);
     }
 
+    console.log('[DEBUG] Stream completed, total chunks:', chunkCount, 'total content length:', totalContent.length);
     res.write('data: [DONE]\n\n');
     res.end();
   } catch (error) {
-    console.error('Streaming chat error:', error);
+    console.error('[DEBUG] Streaming chat error:', error);
     res.write(`data: ${JSON.stringify({ error: error.message })}\n\n`);
     res.write('data: [DONE]\n\n');
     res.end();
@@ -122,9 +136,18 @@ router.get('/models/:provider', authenticateToken, async (req, res) => {
 
     const instance = createProvider(providerConfig.provider, {
       apiKey: providerConfig.config.apiKey,
+      baseUrl: providerConfig.config.baseUrl,
     });
 
-    res.json({ models: instance.getModels() });
+    // Use dynamic fetchModels for OpenAIProvider if using custom baseUrl
+    let models;
+    if (typeof instance.fetchModels === 'function') {
+      models = await instance.fetchModels();
+    } else {
+      models = instance.getModels();
+    }
+
+    res.json({ models });
   } catch (error) {
     console.error('Get models error:', error);
     res.status(500).json({ error: 'Failed to get models' });
