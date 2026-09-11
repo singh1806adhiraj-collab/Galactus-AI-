@@ -40,7 +40,19 @@ describe('Provider routes', () => {
   });
 
   beforeEach(() => {
-    vi.stubGlobal('fetch', vi.fn().mockResolvedValue(okJson({ data: [] })));
+    const mockFetch = vi.fn((url) => {
+      if (url.includes('/models')) {
+        // For both testConnection and fetchModels, return model data
+        return okJson({
+          data: [
+            { id: 'gpt-4o', name: 'GPT-4o', context_length: 128000 },
+            { id: 'gpt-4o-mini', name: 'GPT-4o Mini', context_length: 128000 }
+          ]
+        });
+      }
+      return okJson({ data: [] });
+    });
+    vi.stubGlobal('fetch', mockFetch);
   });
 
   afterEach(() => {

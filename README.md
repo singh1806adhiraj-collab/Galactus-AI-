@@ -1,6 +1,6 @@
 # Galactus AI
 
-> **AI Orchestration Workspace for Developers** — A production-ready, multi-provider AI chat application with real-time streaming, provider management, and local router support.
+> **AI Orchestration Workspace for Developers** — A production-ready, multi-provider AI chat application with real-time streaming, provider management, and direct provider API integration.
 
 ---
 
@@ -13,9 +13,9 @@ Galactus AI is built on these foundational principles:
 - **Hot-Swappable**: Switch between OpenAI, Anthropic, Google, DeepSeek, OpenRouter, Mistral, Grok, Groq without code changes
 - **Real Connectivity Testing**: "Connected" status means actual API validation, not just configuration
 
-### 2. **Local-First with Router Support**
-- **9Router/OmniRoute Compatible**: Configure custom base URLs (e.g., `http://localhost:20128/v1`) to route through local AI gateways
-- **Zero Lock-in**: Use cloud APIs, local models, or hybrid routing transparently
+### 2. **Direct Provider Integration**
+- **Zero Proxy Dependency**: Each provider communicates directly with its official API
+- **No Local Router Required**: Works without 9Router, OmniRoute, or any proxy infrastructure
 - **Encrypted Credentials**: AES-256-CBC encryption for all API keys at rest
 
 ### 3. **Production-Grade Streaming**
@@ -67,7 +67,6 @@ Galactus AI is built on these foundational principles:
 │         ▼                   ▼                   ▼                │
 │  ┌─────────────┐    ┌─────────────┐    ┌─────────────┐         │
 │  │ OpenAIProvider│   │AnthropicProvider│ │  ...        │         │
-│  │ (9Router)    │    │             │    │  6 more     │         │
 │  └─────────────┘    └─────────────┘    └─────────────┘         │
 └─────────────────────────────────────────────────────────────────┘
 ```
@@ -117,7 +116,7 @@ Edit `.env` with your settings:
 JWT_SECRET=your-super-secret-jwt-key-change-in-production
 ENCRYPTION_KEY=your-32-char-hex-encryption-key
 
-# Optional - for local AI router (9Router, etc.)
+# Optional
 # FRONTEND_URL=http://localhost:5173
 # PORT=3001
 ```
@@ -156,29 +155,32 @@ Navigate to **http://localhost:5173**
 
 1. **Sign up** or **Continue as Guest**
 2. Go to **Providers** page → **Add Provider**
-3. Select **OpenAI**, enter API key (or leave empty for 9Router)
-4. **Optional**: Set Base URL to `http://localhost:20128/v1` for 9Router
-5. Click **Test Connection** → Should show "Connected"
-6. Return to **Chat**, select **GPT-4o**, send a message
+3. Select **OpenAI**, enter your OpenAI API key
+4. Click **Test Connection** → Should show "Connected" (validates API key)
+5. Return to **Chat**, select **GPT-4o**, send a message
 
 ---
 
 ## 🔧 Provider Configuration
 
-### Using 9Router / Local Gateway
+### Direct Provider Integration
 
-Galactus AI works with any OpenAI-compatible endpoint:
+Galactus AI connects directly to each provider's official API. No local router required.
 
 | Provider | Base URL | Notes |
 |----------|----------|-------|
-| **9Router** | `http://localhost:20128/v1` | Local router, no API key needed |
+| **OpenAI** | `https://api.openai.com/v1` | Default, requires OpenAI API key |
+| **Anthropic** | `https://api.anthropic.com/v1` | Requires Anthropic API key |
+| **Google** | `https://generativelanguage.googleapis.com/v1beta` | Requires Google AI API key |
+| **DeepSeek** | `https://api.deepseek.com/v1` | Requires DeepSeek API key |
 | **OpenRouter** | `https://openrouter.ai/api/v1` | Requires OpenRouter API key |
-| **Ollama** | `http://localhost:11434/v1` | Local models via Ollama |
-| **LM Studio** | `http://localhost:1234/v1` | Local models via LM Studio |
-| **Official OpenAI** | `https://api.openai.com/v1` | Default, requires OpenAI key |
+| **Mistral** | `https://api.mistral.ai/v1` | Requires Mistral API key |
+| **Grok (xAI)** | `https://api.x.ai/v1` | Requires xAI API key |
+| **Groq** | `https://api.groq.com/openai/v1` | Requires Groq API key |
 
-**Model IDs must match the router's `/v1/models` response.**  
-Example: If 9Router returns `"id": "openai"`, use `model: "openai"` in chat.
+**Custom Base URL (Optional)**: For enterprise proxies or self-hosted compatible APIs, you can configure a custom base URL per provider. Leave empty to use the provider's official API.
+
+**Model IDs** must match the provider's official model list. Each provider's models are fetched dynamically when connected.
 
 ---
 
@@ -243,7 +245,7 @@ galactus-ai/
 ├── providers/
 │   ├── index.js           # Registry + metadata (8 providers)
 │   ├── BaseProvider.js    # Abstract base class
-│   ├── OpenAIProvider.js  # OpenAI/9Router implementation
+│   ├── OpenAIProvider.js  # OpenAI implementation
 │   ├── AnthropicProvider.js
 │   ├── GeminiProvider.js
 │   ├── DeepSeekProvider.js
@@ -309,7 +311,7 @@ galactus-ai/
 | Issue | Solution |
 |-------|----------|
 | `createPortal is not a function` | Ensure `import { createPortal } from 'react-dom'` (not `react-dom/client`) |
-| Chat hangs on "thinking..." | Check backend logs; verify 9Router running at `:20128`; check API key |
+| Chat hangs on "thinking..." | Check backend logs; verify API key is valid for the selected provider |
 | "Provider not configured" | Add provider in Providers page with valid API key |
 | CORS errors | Set `FRONTEND_URL` in `.env` to match your frontend origin |
 | SQLite locked | Ensure single process; WAL mode handles concurrent reads |
@@ -336,7 +338,6 @@ MIT License — see [LICENSE](LICENSE) for details.
 
 ## 🙏 Acknowledgments
 
-- **9Router** — Local AI routing inspiration
 - **OpenAI-compatible APIs** — Universal interface standard
 - **React Team** — React 19 streaming primitives
 - **Vite Team** — Lightning-fast build tooling

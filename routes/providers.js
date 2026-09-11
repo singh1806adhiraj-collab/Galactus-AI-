@@ -139,9 +139,18 @@ router.get('/:provider/models', authenticateToken, async (req, res) => {
 
     const provider = createProvider(req.params.provider, {
       apiKey: providerConfig.config.apiKey,
+      baseUrl: providerConfig.config.baseUrl,
     });
 
-    res.json({ models: provider.getModels() });
+    // Use dynamic fetchModels for providers that support it
+    let models;
+    if (typeof provider.fetchModels === 'function') {
+      models = await provider.fetchModels();
+    } else {
+      models = provider.getModels();
+    }
+
+    res.json({ models });
   } catch (error) {
     console.error('Get provider models error:', error);
     res.status(500).json({ error: 'Failed to get models' });

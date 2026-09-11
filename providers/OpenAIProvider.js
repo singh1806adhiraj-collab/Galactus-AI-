@@ -4,7 +4,7 @@ import { BaseProvider } from './BaseProvider.js';
 export class OpenAIProvider extends BaseProvider {
   constructor(config = {}) {
     super(config);
-    this.baseUrl = config.baseUrl || 'http://localhost:20128/v1';
+    this.baseUrl = config.baseUrl || 'https://api.openai.com/v1';
     console.log('[DEBUG] OpenAIProvider created with baseUrl:', this.baseUrl);
   }
 
@@ -58,13 +58,6 @@ export class OpenAIProvider extends BaseProvider {
       return this.getModels();
     }
 
-    // Only fetch dynamically if using a custom baseUrl (not official OpenAI)
-    const isOfficialOpenAI = this.baseUrl === 'https://api.openai.com/v1' || this.baseUrl === 'https://api.openai.com/v1/';
-
-    if (isOfficialOpenAI) {
-      return this.getModels();
-    }
-
     try {
       const controller = new AbortController();
       const timeoutId = setTimeout(() => controller.abort(), 15000);
@@ -86,7 +79,7 @@ export class OpenAIProvider extends BaseProvider {
 
       const data = await response.json();
 
-      // Convert OpenAI-compatible model list to our format
+      // Convert OpenAI model list to our format
       if (data.data && Array.isArray(data.data)) {
         return data.data.map(model => ({
           id: model.id,

@@ -93,6 +93,8 @@ export default function Composer({
 
   const handleProviderSelect = (providerId) => {
     setSelectedProvider(providerId);
+    // Reset model when provider changes so it can be re-fetched
+    setSelectedModel('');
   };
 
   const handleComboSelect = (comboId) => {
@@ -109,6 +111,7 @@ export default function Composer({
             onSelect={handleModelSelect}
             className="composer-model-selector"
             placeholder="Select model"
+            provider={selectedProvider}
           />
           <ProviderComboSelector
             selectedProvider={selectedProvider}

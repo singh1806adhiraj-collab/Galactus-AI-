@@ -249,10 +249,10 @@ export default function ProviderModal({
               className="form-input"
               value={formData.baseUrl}
               onChange={(e) => handleInputChange('baseUrl', e.target.value)}
-              placeholder="e.g., http://localhost:20128/v1"
+              placeholder="e.g., https://api.openai.com/v1"
               disabled={status === 'saving' || status === 'testing'}
             />
-            <p className="form-hint">Custom API base URL for local routers (e.g., 9Router, OpenRouter). Leave empty for default.</p>
+            <p className="form-hint">Custom API base URL (e.g., OpenRouter, enterprise proxy). Leave empty for provider's official API.</p>
           </div>
 
           <div className="form-group">

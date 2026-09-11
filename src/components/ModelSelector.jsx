@@ -1,17 +1,7 @@
 /* Galactus AI - Model Selector Component */
-import { useState, useRef, useEffect, useCallback } from 'react';
+import { useState, useRef, useEffect, useCallback, useMemo } from 'react';
 import { createPortal } from 'react-dom';
-
-const models = [
-  { id: 'gpt-4o', name: 'GPT-4o', provider: 'OpenAI', context: '128k', tier: 'flagship', tierLabel: 'Best for complex tasks' },
-  { id: 'gpt-4o-mini', name: 'GPT-4o Mini', provider: 'OpenAI', context: '128k', tier: 'fast', tierLabel: 'Fast & cost-effective' },
-  { id: 'claude-3.5-sonnet', name: 'Claude 3.5 Sonnet', provider: 'Anthropic', context: '200k', tier: 'flagship', tierLabel: 'Best for coding' },
-  { id: 'claude-3.5-haiku', name: 'Claude 3.5 Haiku', provider: 'Anthropic', context: '200k', tier: 'fast', tierLabel: 'Fast & efficient' },
-  { id: 'gemini-1.5-pro', name: 'Gemini 1.5 Pro', provider: 'Google', context: '2M', tier: 'flagship', tierLabel: 'Massive context' },
-  { id: 'gemini-1.5-flash', name: 'Gemini 1.5 Flash', provider: 'Google', context: '1M', tier: 'fast', tierLabel: 'Fast with large context' },
-  { id: 'deepseek-v3', name: 'DeepSeek V3', provider: 'DeepSeek', context: '128k', tier: 'flagship', tierLabel: 'Strong reasoning' },
-  { id: 'deepseek-r1', name: 'DeepSeek R1', provider: 'DeepSeek', context: '128k', tier: 'reasoning', tierLabel: 'Reasoning model' },
-];
+import api from '../services/api.js';
 
 const tierIcons = {
   flagship: '⭐',
@@ -24,6 +14,18 @@ const tierLabels = {
   fast: 'Fast',
   reasoning: 'Reasoning',
 };
+
+// Default fallback models if API fetch fails
+const DEFAULT_MODELS = [
+  { id: 'gpt-4o', name: 'GPT-4o', provider: 'OpenAI', context: '128k', tier: 'flagship', tierLabel: 'Best for complex tasks' },
+  { id: 'gpt-4o-mini', name: 'GPT-4o Mini', provider: 'OpenAI', context: '128k', tier: 'fast', tierLabel: 'Fast & cost-effective' },
+  { id: 'claude-3.5-sonnet', name: 'Claude 3.5 Sonnet', provider: 'Anthropic', context: '200k', tier: 'flagship', tierLabel: 'Best for coding' },
+  { id: 'claude-3.5-haiku', name: 'Claude 3.5 Haiku', provider: 'Anthropic', context: '200k', tier: 'fast', tierLabel: 'Fast & efficient' },
+  { id: 'gemini-1.5-pro', name: 'Gemini 1.5 Pro', provider: 'Google', context: '2M', tier: 'flagship', tierLabel: 'Massive context' },
+  { id: 'gemini-1.5-flash', name: 'Gemini 1.5 Flash', provider: 'Google', context: '1M', tier: 'fast', tierLabel: 'Fast with large context' },
+  { id: 'deepseek-v3', name: 'DeepSeek V3', provider: 'DeepSeek', context: '128k', tier: 'flagship', tierLabel: 'Strong reasoning' },
+  { id: 'deepseek-r1', name: 'DeepSeek R1', provider: 'DeepSeek', context: '128k', tier: 'reasoning', tierLabel: 'Reasoning model' },
+];
 
 function ModelSelectorDropdown({ isOpen, searchQuery, setSearchQuery, filteredModels, selectedModel, onSelect, setIsOpen, inputRef, dropdownRef, triggerRect }) {
   if (!isOpen || !triggerRect) return null;
@@ -98,10 +100,18 @@ function ModelSelectorDropdown({ isOpen, searchQuery, setSearchQuery, filteredMo
   );
 }
 
-export default function ModelSelector({ selectedModel, onSelect, className = '', placeholder = 'Select model' }) {
+export default function ModelSelector({
+  selectedModel,
+  onSelect,
+  className = '',
+  placeholder = 'Select model',
+  provider = 'openai'  // Provider to fetch models for
+}) {
   const [isOpen, setIsOpen] = useState(false);
   const [searchQuery, setSearchQuery] = useState('');
   const [triggerRect, setTriggerRect] = useState(null);
+  const [models, setModels] = useState(DEFAULT_MODELS);
+  const [isLoadingModels, setIsLoadingModels] = useState(false);
   const dropdownRef = useRef(null);
   const inputRef = useRef(null);
   const triggerRef = useRef(null);
@@ -111,6 +121,37 @@ export default function ModelSelector({ selectedModel, onSelect, className = '',
       setTriggerRect(triggerRef.current.getBoundingClientRect());
     }
   }, []);
+
+  // Fetch models for the selected provider
+  useEffect(() => {
+    let cancelled = false;
+
+    async function fetchModels() {
+      setIsLoadingModels(true);
+      try {
+        const data = await api.getProviderModels(provider);
+        if (!cancelled && data.models) {
+          setModels(data.models);
+        }
+      } catch (error) {
+        console.warn('Failed to fetch models for provider:', provider, error);
+        // Keep default models as fallback
+        if (!cancelled) {
+          setModels(DEFAULT_MODELS);
+        }
+      } finally {
+        if (!cancelled) {
+          setIsLoadingModels(false);
+        }
+      }
+    }
+
+    fetchModels();
+
+    return () => {
+      cancelled = true;
+    };
+  }, [provider]);
 
   useEffect(() => {
     function handleClickOutside(event) {
@@ -136,12 +177,18 @@ export default function ModelSelector({ selectedModel, onSelect, className = '',
     };
   }, [isOpen, updateTriggerRect]);
 
-  const filteredModels = models.filter(model =>
-    model.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
-    model.provider.toLowerCase().includes(searchQuery.toLowerCase())
+  const filteredModels = useMemo(() =>
+    models.filter(model =>
+      model.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
+      model.provider.toLowerCase().includes(searchQuery.toLowerCase())
+    ),
+    [models, searchQuery]
   );
 
-  const currentModel = models.find(m => m.id === selectedModel) || models[0];
+  const currentModel = useMemo(() =>
+    models.find(m => m.id === selectedModel) || models[0],
+    [models, selectedModel]
+  );
 
   const handleToggle = () => {
     const newIsOpen = !isOpen;
