@@ -104,7 +104,7 @@ export default function HomePage() {
         { role: 'user', content: text }
       ], {
         provider: options.provider || 'openai',
-        model: options.model || 'gpt-4o',
+        model: options.model,
         signal: abortControllerRef.current.signal,
       })) {
         chunkCount++;

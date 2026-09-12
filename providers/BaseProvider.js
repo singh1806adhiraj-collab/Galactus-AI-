@@ -48,6 +48,17 @@ export class BaseProvider {
   }
 
   handleError(error) {
+    // If the error already has detailed provider info (status, type, code, param), preserve it
+    if (error.status || error.type || error.code) {
+      const msg = error.message || 'Provider error';
+      const newError = new Error(msg);
+      newError.status = error.status;
+      newError.type = error.type;
+      newError.code = error.code;
+      newError.param = error.param;
+      return newError;
+    }
+
     if (error.response) {
       const status = error.response.status;
       if (status === 401) return new Error('Invalid API key');

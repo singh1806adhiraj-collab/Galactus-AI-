@@ -152,7 +152,7 @@ export const api = {
         if (done) {
           console.log('[DEBUG] Stream reader done, total SSE chunks:', chunkCount, 'content chunks yielded:', contentChunksYielded);
 
-          // If we never yielded any content, the provider returned an empty response
+          // If we never yielded any content AND no error was thrown, the provider returned an empty response
           if (contentChunksYielded === 0) {
             throw new Error('Provider returned empty response - check API key and model configuration');
           }
@@ -180,7 +180,10 @@ export const api = {
               const parsed = JSON.parse(data);
               if (parsed.error) {
                 console.error('[DEBUG] Server error in stream:', parsed.error);
-                throw new Error(parsed.error);
+                // Throw a special error that preserves the provider's error message
+                const error = new Error(parsed.error);
+                error.isProviderError = true;
+                throw error;
               }
               if (parsed.content) {
                 contentChunksYielded++;
@@ -188,7 +191,11 @@ export const api = {
                 yield parsed.content;
               }
             } catch (e) {
-              // Ignore parse errors
+              // If it's our provider error, re-throw it
+              if (e.isProviderError) {
+                throw e;
+              }
+              // Ignore actual JSON parse errors (malformed chunks)
               console.warn('[DEBUG] Parse error:', e.message, 'for line:', line);
             }
           }

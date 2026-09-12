@@ -207,7 +207,16 @@ class ProviderService {
       baseUrl: providerConfig.config.baseUrl,
     });
 
-    const model = options.model || provider.getDefaultModel();
+    const requestedModel = options.model;
+    const model = requestedModel || provider.getDefaultModel();
+
+    console.log('[MODEL DEBUG] ProviderService:', {
+      provider: providerId,
+      requestedModel,
+      resolvedModel: model,
+      baseUrl: providerConfig.config.baseUrl
+    });
+
     // Use async validation for providers that support it (e.g., OpenAI with dynamic models)
     const isModelValid = typeof provider.validateModelAsync === 'function'
       ? await provider.validateModelAsync(model)

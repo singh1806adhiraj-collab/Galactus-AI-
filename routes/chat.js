@@ -118,7 +118,14 @@ router.post('/stream', authenticateToken, async (req, res) => {
     res.end();
   } catch (error) {
     console.error('[DEBUG] Streaming chat error:', error);
-    res.write(`data: ${JSON.stringify({ error: error.message })}\n\n`);
+    const errorPayload = {
+      error: error.message,
+      status: error.status,
+      type: error.type,
+      code: error.code,
+      param: error.param
+    };
+    res.write(`data: ${JSON.stringify(errorPayload)}\n\n`);
     res.write('data: [DONE]\n\n');
     res.end();
   }

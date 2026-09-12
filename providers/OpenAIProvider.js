@@ -142,7 +142,16 @@ export class OpenAIProvider extends BaseProvider {
       throw new Error('No API key configured');
     }
 
-    const model = options.model || this.getDefaultModel();
+    const requestedModel = options.model;
+    const model = requestedModel || this.getDefaultModel();
+
+    console.log('[MODEL DEBUG] OpenAIProvider.chatCompletion:', {
+      provider: this.getName(),
+      requestedModel,
+      resolvedModel: model,
+      baseUrl: this.baseUrl
+    });
+
     const formattedMessages = this.formatMessages(messages);
 
     const requestBody = {
@@ -172,8 +181,33 @@ export class OpenAIProvider extends BaseProvider {
       clearTimeout(timeoutId);
 
       if (!response.ok) {
-        const error = await response.json().catch(() => ({}));
-        throw this.handleError(new Error(error.error?.message || `API error: ${response.status}`));
+        let errorBody;
+        try {
+          errorBody = await response.json();
+        } catch (e) {
+          errorBody = { error: { message: await response.text() } };
+        }
+
+        const errorMessage = errorBody?.error?.message || `API error: ${response.status}`;
+        const errorType = errorBody?.error?.type;
+        const errorCode = errorBody?.error?.code;
+        const errorParam = errorBody?.error?.param;
+
+        console.error('[OPENAI ERROR]', {
+          status: response.status,
+          message: errorMessage,
+          type: errorType,
+          code: errorCode,
+          param: errorParam
+        });
+
+        // Create an error with the full provider error details
+        const error = new Error(errorMessage);
+        error.status = response.status;
+        error.type = errorType;
+        error.code = errorCode;
+        error.param = errorParam;
+        throw error;
       }
 
       const data = await response.json();
@@ -200,7 +234,16 @@ export class OpenAIProvider extends BaseProvider {
       throw new Error('No API key configured');
     }
 
-    const model = options.model || this.getDefaultModel();
+    const requestedModel = options.model;
+    const model = requestedModel || this.getDefaultModel();
+
+    console.log('[MODEL DEBUG] OpenAIProvider.streamChatCompletion:', {
+      provider: this.getName(),
+      requestedModel,
+      resolvedModel: model,
+      baseUrl: this.baseUrl
+    });
+
     const formattedMessages = this.formatMessages(messages);
 
     console.log('[DEBUG] OpenAIProvider.streamChatCompletion:');
@@ -237,9 +280,33 @@ export class OpenAIProvider extends BaseProvider {
       console.log('  response ok:', response.ok);
 
       if (!response.ok) {
-        const errorText = await response.text();
-        console.log('  error response:', errorText);
-        throw this.handleError(new Error(`API error: ${response.status}`));
+        let errorBody;
+        try {
+          errorBody = await response.json();
+        } catch (e) {
+          errorBody = { error: { message: await response.text() } };
+        }
+
+        const errorMessage = errorBody?.error?.message || `API error: ${response.status}`;
+        const errorType = errorBody?.error?.type;
+        const errorCode = errorBody?.error?.code;
+        const errorParam = errorBody?.error?.param;
+
+        console.error('[OPENAI ERROR]', {
+          status: response.status,
+          message: errorMessage,
+          type: errorType,
+          code: errorCode,
+          param: errorParam
+        });
+
+        // Create an error with the full provider error details
+        const error = new Error(errorMessage);
+        error.status = response.status;
+        error.type = errorType;
+        error.code = errorCode;
+        error.param = errorParam;
+        throw error;
       }
 
       clearTimeout(timeoutId);

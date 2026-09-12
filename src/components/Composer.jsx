@@ -20,7 +20,7 @@ export default function Composer({
   const [showAttachMenu, setShowAttachMenu] = useState(false);
   const attachMenuRef = useRef(null);
   const [modelProviders, setModelProviders] = useState([]);
-  const [selectedModel, setSelectedModel] = useState('gpt-4o');
+  const [selectedModel, setSelectedModel] = useState('');
   const [selectedProvider, setSelectedProvider] = useState('openai');
   const [selectedCombo, setSelectedCombo] = useState('flagship-fallback');
   const { isAuthenticated, user } = useAuth();
@@ -66,7 +66,7 @@ export default function Composer({
     if (text.trim() && !isStreaming && !disabled) {
       onSend(text.trim(), {
         provider: selectedProvider,
-        model: selectedModel,
+        model: selectedModel || undefined,
         combo: selectedCombo,
       });
       setText('');
