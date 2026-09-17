@@ -1,6 +1,83 @@
 /* Galactus AI - OpenAI Provider */
 import { BaseProvider } from './BaseProvider.js';
 
+// OpenAI model capability mapping
+// Based on OpenAI's model capabilities as of 2024
+const OPENAI_MODEL_CAPABILITIES = {
+  // Chat models (support /chat/completions)
+  'gpt-4o': { chat: true, completion: false, embedding: false, image: false, audio: false },
+  'gpt-4o-mini': { chat: true, completion: false, embedding: false, image: false, audio: false },
+  'gpt-4o-2024-05-13': { chat: true, completion: false, embedding: false, image: false, audio: false },
+  'gpt-4o-2024-08-06': { chat: true, completion: false, embedding: false, image: false, audio: false },
+  'gpt-4-turbo': { chat: true, completion: false, embedding: false, image: false, audio: false },
+  'gpt-4-turbo-2024-04-09': { chat: true, completion: false, embedding: false, image: false, audio: false },
+  'gpt-4': { chat: true, completion: false, embedding: false, image: false, audio: false },
+  'gpt-4-0613': { chat: true, completion: false, embedding: false, image: false, audio: false },
+  'gpt-4-32k': { chat: true, completion: false, embedding: false, image: false, audio: false },
+  'gpt-4-32k-0613': { chat: true, completion: false, embedding: false, image: false, audio: false },
+  'gpt-3.5-turbo': { chat: true, completion: false, embedding: false, image: false, audio: false },
+  'gpt-3.5-turbo-0125': { chat: true, completion: false, embedding: false, image: false, audio: false },
+  'gpt-3.5-turbo-1106': { chat: true, completion: false, embedding: false, image: false, audio: false },
+  'gpt-3.5-turbo-16k': { chat: true, completion: false, embedding: false, image: false, audio: false },
+  'gpt-3.5-turbo-16k-0613': { chat: true, completion: false, embedding: false, image: false, audio: false },
+  'gpt-3.5-turbo-0613': { chat: true, completion: false, embedding: false, image: false, audio: false },
+  'gpt-3.5-turbo-instruct': { chat: false, completion: true, embedding: false, image: false, audio: false },
+
+  // o1 series
+  'o1-preview': { chat: true, completion: false, embedding: false, image: false, audio: false },
+  'o1-mini': { chat: true, completion: false, embedding: false, image: false, audio: false },
+  'o1-2024-12-17': { chat: true, completion: false, embedding: false, image: false, audio: false },
+
+  // Embedding models (NOT chat)
+  'text-embedding-ada-002': { chat: false, completion: false, embedding: true, image: false, audio: false },
+  'text-embedding-3-small': { chat: false, completion: false, embedding: true, image: false, audio: false },
+  'text-embedding-3-large': { chat: false, completion: false, embedding: true, image: false, audio: false },
+
+  // Image models (NOT chat)
+  'dall-e-2': { chat: false, completion: false, embedding: false, image: true, audio: false },
+  'dall-e-3': { chat: false, completion: false, embedding: false, image: true, audio: false },
+
+  // Audio models (NOT chat)
+  'whisper-1': { chat: false, completion: false, embedding: false, image: false, audio: true },
+  'tts-1': { chat: false, completion: false, embedding: false, image: false, audio: true },
+  'tts-1-hd': { chat: false, completion: false, embedding: false, image: false, audio: true },
+
+  // Moderation (NOT chat)
+  'text-moderation-latest': { chat: false, completion: false, embedding: false, image: false, audio: false, moderation: true },
+  'text-moderation-stable': { chat: false, completion: false, embedding: false, image: false, audio: false, moderation: true },
+};
+
+// Model ID patterns for capability inference
+const MODEL_PATTERNS = [
+  { pattern: /^gpt-4/, capabilities: { chat: true, completion: false, embedding: false, image: false, audio: false } },
+  { pattern: /^gpt-3\.5-turbo(?!-instruct)/, capabilities: { chat: true, completion: false, embedding: false, image: false, audio: false } },
+  { pattern: /^gpt-3\.5-turbo-instruct/, capabilities: { chat: false, completion: true, embedding: false, image: false, audio: false } },
+  { pattern: /^o1-/, capabilities: { chat: true, completion: false, embedding: false, image: false, audio: false } },
+  { pattern: /^text-embedding-/, capabilities: { chat: false, completion: false, embedding: true, image: false, audio: false } },
+  { pattern: /^dall-e-/, capabilities: { chat: false, completion: false, embedding: false, image: true, audio: false } },
+  { pattern: /^whisper-/, capabilities: { chat: false, completion: false, embedding: false, image: false, audio: true } },
+  { pattern: /^tts-/, capabilities: { chat: false, completion: false, embedding: false, image: false, audio: true } },
+  { pattern: /^text-moderation-/, capabilities: { chat: false, completion: false, embedding: false, image: false, audio: false, moderation: true } },
+];
+
+function getModelCapabilities(modelId) {
+  // First check exact match
+  if (OPENAI_MODEL_CAPABILITIES[modelId]) {
+    return OPENAI_MODEL_CAPABILITIES[modelId];
+  }
+
+  // Then check patterns
+  for (const { pattern, capabilities } of MODEL_PATTERNS) {
+    if (pattern.test(modelId)) {
+      return capabilities;
+    }
+  }
+
+  // Default: unknown model, assume chat-capable for safety but log warning
+  console.warn(`[OPENAI] Unknown model "${modelId}" - defaulting to chat-capable`);
+  return { chat: true, completion: false, embedding: false, image: false, audio: false };
+}
+
 export class OpenAIProvider extends BaseProvider {
   constructor(config = {}) {
     super(config);
@@ -13,12 +90,12 @@ export class OpenAIProvider extends BaseProvider {
   }
 
   getModels() {
-    // Default models for official OpenAI API
+    // Default models for official OpenAI API (chat-capable only)
     const defaultModels = [
-      { id: 'gpt-4o', name: 'GPT-4o', context: '128k', tier: 'flagship' },
-      { id: 'gpt-4o-mini', name: 'GPT-4o Mini', context: '128k', tier: 'fast' },
-      { id: 'gpt-4-turbo', name: 'GPT-4 Turbo', context: '128k', tier: 'flagship' },
-      { id: 'gpt-3.5-turbo', name: 'GPT-3.5 Turbo', context: '16k', tier: 'fast' },
+      { id: 'gpt-4o', name: 'GPT-4o', context: '128k', tier: 'flagship', capabilities: getModelCapabilities('gpt-4o') },
+      { id: 'gpt-4o-mini', name: 'GPT-4o Mini', context: '128k', tier: 'fast', capabilities: getModelCapabilities('gpt-4o-mini') },
+      { id: 'gpt-4-turbo', name: 'GPT-4 Turbo', context: '128k', tier: 'flagship', capabilities: getModelCapabilities('gpt-4-turbo') },
+      { id: 'gpt-3.5-turbo', name: 'GPT-3.5 Turbo', context: '16k', tier: 'fast', capabilities: getModelCapabilities('gpt-3.5-turbo') },
     ];
 
     // If using a custom baseUrl (not official OpenAI), we should fetch models from the API
@@ -79,14 +156,27 @@ export class OpenAIProvider extends BaseProvider {
 
       const data = await response.json();
 
-      // Convert OpenAI model list to our format
+      // Convert OpenAI model list to our format, filtering for chat-capable models
       if (data.data && Array.isArray(data.data)) {
-        return data.data.map(model => ({
+        const allModels = data.data.map(model => ({
           id: model.id,
           name: model.id,
           context: model.context_length ? `${Math.round(model.context_length / 1000)}k` : 'unknown',
-          tier: 'custom'
+          tier: 'custom',
+          capabilities: getModelCapabilities(model.id)
         }));
+
+        // Filter for chat-capable models only
+        const chatModels = allModels.filter(m => m.capabilities?.chat === true);
+
+        console.log(`[OPENAI] Fetched ${allModels.length} models, ${chatModels.length} are chat-capable`);
+
+        if (chatModels.length === 0) {
+          console.warn('[OPENAI] No chat-capable models found, falling back to defaults');
+          return this.getModels();
+        }
+
+        return chatModels;
       }
 
       return this.getModels();
@@ -145,11 +235,18 @@ export class OpenAIProvider extends BaseProvider {
     const requestedModel = options.model;
     const model = requestedModel || this.getDefaultModel();
 
+    // Validate model capability before sending request
+    const capabilities = getModelCapabilities(model);
+    if (!capabilities?.chat) {
+      throw new Error(`Model "${model}" does not support chat completions. This model may be an embedding, image, audio, or completion-only model.`);
+    }
+
     console.log('[MODEL DEBUG] OpenAIProvider.chatCompletion:', {
       provider: this.getName(),
       requestedModel,
       resolvedModel: model,
-      baseUrl: this.baseUrl
+      baseUrl: this.baseUrl,
+      capabilities
     });
 
     const formattedMessages = this.formatMessages(messages);
@@ -237,11 +334,18 @@ export class OpenAIProvider extends BaseProvider {
     const requestedModel = options.model;
     const model = requestedModel || this.getDefaultModel();
 
+    // Validate model capability before sending request
+    const capabilities = getModelCapabilities(model);
+    if (!capabilities?.chat) {
+      throw new Error(`Model "${model}" does not support chat completions. This model may be an embedding, image, audio, or completion-only model.`);
+    }
+
     console.log('[MODEL DEBUG] OpenAIProvider.streamChatCompletion:', {
       provider: this.getName(),
       requestedModel,
       resolvedModel: model,
-      baseUrl: this.baseUrl
+      baseUrl: this.baseUrl,
+      capabilities
     });
 
     const formattedMessages = this.formatMessages(messages);

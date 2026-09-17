@@ -1,6 +1,5 @@
 /* Galactus AI - Provider/Combo Selector Component */
-import { useState, useRef, useEffect, useCallback } from 'react';
-import { createPortal } from 'react-dom';
+import { useState, useRef, useEffect } from 'react';
 
 const providers = [
   { id: 'openai', name: 'OpenAI', status: 'healthy', models: 12, color: '#00A67E' },
@@ -29,97 +28,6 @@ const statusLabels = {
   down: 'Down',
 };
 
-function SelectorDropdown({ isOpen, activeTab, selectedProvider, onSelectProvider, selectedCombo, onSelectCombo, setIsOpen, dropdownRef, triggerRect }) {
-  if (!isOpen || !triggerRect) return null;
-
-  const dropdownStyle = {
-    position: 'fixed',
-    top: `${triggerRect.bottom + 8}px`,
-    left: `${triggerRect.left}px`,
-    minWidth: '300px',
-    maxWidth: '440px',
-    zIndex: 9999,
-  };
-
-  return createPortal(
-    <div
-      ref={dropdownRef}
-      className="selector-dropdown"
-      role="listbox"
-      style={dropdownStyle}
-    >
-      {activeTab === 'providers' ? (
-        <div className="selector-list" id="providers-panel" role="tabpanel" aria-labelledby="providers-tab">
-          {providers.map((provider) => (
-            <button
-              key={provider.id}
-              className={`selector-item ${provider.id === selectedProvider ? 'selected' : ''}`}
-              role="option"
-              aria-selected={provider.id === selectedProvider}
-              onClick={() => {
-                onSelectProvider(provider.id);
-                setIsOpen(false);
-              }}
-            >
-              <div className="provider-item-info">
-                <div className="provider-item-header">
-                  <span
-                    className="provider-status-dot"
-                    style={{ backgroundColor: statusColors[provider.status] }}
-                    aria-hidden="true"
-                  />
-                  <span className="provider-item-name">{provider.name}</span>
-                </div>
-                <div className="provider-item-meta">
-                  <span className={`provider-status ${provider.status}`}>{statusLabels[provider.status]}</span>
-                  <span className="provider-models">• {provider.models} models</span>
-                </div>
-              </div>
-              {provider.id === selectedProvider && (
-                <span className="selector-item-check" aria-hidden="true">✓</span>
-              )}
-            </button>
-          ))}
-        </div>
-      ) : (
-        <div className="selector-list" id="combos-panel" role="tabpanel" aria-labelledby="combos-tab">
-          {combos.map((combo) => (
-            <button
-              key={combo.id}
-              className={`selector-item ${combo.id === selectedCombo ? 'selected' : ''}`}
-              role="option"
-              aria-selected={combo.id === selectedCombo}
-              onClick={() => {
-                onSelectCombo(combo.id);
-                setIsOpen(false);
-              }}
-            >
-              <div className="combo-item-info">
-                <div className="combo-item-header">
-                  <span className="combo-item-name">{combo.name}</span>
-                  <span className="combo-priority">{combo.priority}</span>
-                </div>
-                <div className="combo-item-desc">{combo.description}</div>
-                <div className="combo-item-models">
-                  {combo.models.map((m, i) => (
-                    <span key={m} className="combo-model-tag">
-                      {m}{i < combo.models.length - 1 ? ' → ' : ''}
-                    </span>
-                  ))}
-                </div>
-              </div>
-              {combo.id === selectedCombo && (
-                <span className="selector-item-check" aria-hidden="true">✓</span>
-              )}
-            </button>
-          ))}
-        </div>
-      )}
-    </div>,
-    document.body
-  );
-}
-
 export default function ProviderComboSelector({
   selectedProvider,
   onSelectProvider,
@@ -129,54 +37,23 @@ export default function ProviderComboSelector({
 }) {
   const [activeTab, setActiveTab] = useState('providers');
   const [isOpen, setIsOpen] = useState(false);
-  const [triggerRect, setTriggerRect] = useState(null);
   const dropdownRef = useRef(null);
-  const triggerRef = useRef(null);
-
-  const updateTriggerRect = useCallback(() => {
-    if (triggerRef.current) {
-      setTriggerRect(triggerRef.current.getBoundingClientRect());
-    }
-  }, []);
 
   useEffect(() => {
     function handleClickOutside(event) {
       if (dropdownRef.current && !dropdownRef.current.contains(event.target)) {
-        if (triggerRef.current && !triggerRef.current.contains(event.target)) {
-          setIsOpen(false);
-        }
+        setIsOpen(false);
       }
     }
     document.addEventListener('mousedown', handleClickOutside);
     return () => document.removeEventListener('mousedown', handleClickOutside);
   }, []);
 
-  // Update trigger rect on scroll/resize when open
-  useEffect(() => {
-    if (!isOpen) return;
-    updateTriggerRect();
-    window.addEventListener('scroll', updateTriggerRect, true);
-    window.addEventListener('resize', updateTriggerRect);
-    return () => {
-      window.removeEventListener('scroll', updateTriggerRect, true);
-      window.removeEventListener('resize', updateTriggerRect);
-    };
-  }, [isOpen, updateTriggerRect]);
-
   const currentProvider = providers.find(p => p.id === selectedProvider) || providers[0];
   const currentCombo = combos.find(c => c.id === selectedCombo) || combos[0];
 
-  const handleToggle = () => {
-    const newIsOpen = !isOpen;
-    setIsOpen(newIsOpen);
-    if (newIsOpen) {
-      // Update rect immediately when opening
-      setTimeout(() => updateTriggerRect(), 0);
-    }
-  };
-
   return (
-    <div className={`provider-combo-selector ${className}`} ref={triggerRef}>
+    <div className={`provider-combo-selector ${className}`} ref={dropdownRef}>
       <div className="selector-tabs" role="tablist">
         <button
           role="tab"
@@ -201,9 +78,8 @@ export default function ProviderComboSelector({
       </div>
 
       <button
-        ref={triggerRef}
         className={`selector-trigger ${isOpen ? 'open' : ''}`}
-        onClick={handleToggle}
+        onClick={() => setIsOpen(!isOpen)}
         aria-haspopup="listbox"
         aria-expanded={isOpen}
         aria-label={activeTab === 'providers' ? 'Select provider' : 'Select combo'}
@@ -226,17 +102,77 @@ export default function ProviderComboSelector({
         <span className="selector-chevron" aria-hidden="true">{isOpen ? '▲' : '▼'}</span>
       </button>
 
-      <SelectorDropdown
-        isOpen={isOpen}
-        activeTab={activeTab}
-        selectedProvider={selectedProvider}
-        onSelectProvider={onSelectProvider}
-        selectedCombo={selectedCombo}
-        onSelectCombo={onSelectCombo}
-        setIsOpen={setIsOpen}
-        dropdownRef={dropdownRef}
-        triggerRect={triggerRect}
-      />
+      {isOpen && (
+        <div className="selector-dropdown" role="listbox">
+          {activeTab === 'providers' ? (
+            <div className="selector-list" id="providers-panel" role="tabpanel" aria-labelledby="providers-tab">
+              {providers.map((provider) => (
+                <button
+                  key={provider.id}
+                  className={`selector-item ${provider.id === selectedProvider ? 'selected' : ''}`}
+                  role="option"
+                  aria-selected={provider.id === selectedProvider}
+                  onClick={() => {
+                    onSelectProvider(provider.id);
+                    setIsOpen(false);
+                  }}
+                >
+                  <div className="provider-item-info">
+                    <div className="provider-item-header">
+                      <span
+                        className="provider-status-dot"
+                        style={{ backgroundColor: statusColors[provider.status] }}
+                        aria-hidden="true"
+                      />
+                      <span className="provider-item-name">{provider.name}</span>
+                    </div>
+                    <div className="provider-item-meta">
+                      <span className={`provider-status ${provider.status}`}>{statusLabels[provider.status]}</span>
+                      <span className="provider-models">• {provider.models} models</span>
+                    </div>
+                  </div>
+                  {provider.id === selectedProvider && (
+                    <span className="selector-item-check" aria-hidden="true">✓</span>
+                  )}
+                </button>
+              ))}
+            </div>
+          ) : (
+            <div className="selector-list" id="combos-panel" role="tabpanel" aria-labelledby="combos-tab">
+              {combos.map((combo) => (
+                <button
+                  key={combo.id}
+                  className={`selector-item ${combo.id === selectedCombo ? 'selected' : ''}`}
+                  role="option"
+                  aria-selected={combo.id === selectedCombo}
+                  onClick={() => {
+                    onSelectCombo(combo.id);
+                    setIsOpen(false);
+                  }}
+                >
+                  <div className="combo-item-info">
+                    <div className="combo-item-header">
+                      <span className="combo-item-name">{combo.name}</span>
+                      <span className="combo-priority">{combo.priority}</span>
+                    </div>
+                    <div className="combo-item-desc">{combo.description}</div>
+                    <div className="combo-item-models">
+                      {combo.models.map((m, i) => (
+                        <span key={m} className="combo-model-tag">
+                          {m}{i < combo.models.length - 1 ? ' → ' : ''}
+                        </span>
+                      ))}
+                    </div>
+                  </div>
+                  {combo.id === selectedCombo && (
+                    <span className="selector-item-check" aria-hidden="true">✓</span>
+                  )}
+                </button>
+              ))}
+            </div>
+          )}
+        </div>
+      )}
     </div>
   );
 }
