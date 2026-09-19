@@ -353,4 +353,205 @@ router.get('/verify', async (req, res) => {
   }
 });
 
+// Change password
+router.post('/change-password', async (req, res) => {
+  try {
+    let token = null;
+    const authHeader = req.headers.authorization;
+    if (authHeader && authHeader.startsWith('Bearer ')) {
+      token = authHeader.substring(7);
+    }
+    if (!token && req.cookies && req.cookies.access_token) {
+      token = req.cookies.access_token;
+    }
+    if (!token && req.headers.cookie) {
+      const cookies = req.headers.cookie.split(';').reduce((acc, cookie) => {
+        const [key, value] = cookie.trim().split('=');
+        if (key && value) acc[key] = value;
+        return acc;
+      }, {});
+      if (cookies.access_token) {
+        token = cookies.access_token;
+      }
+    }
+
+    if (!token) {
+      return res.status(401).json({ error: 'No token provided' });
+    }
+
+    const decoded = jwt.verify(token, JWT_SECRET);
+    const { currentPassword, newPassword } = req.body;
+
+    if (!currentPassword || !newPassword) {
+      return res.status(400).json({ error: 'Current and new password are required' });
+    }
+
+    if (newPassword.length < 8) {
+      return res.status(400).json({ error: 'New password must be at least 8 characters' });
+    }
+
+    const db = getDb();
+    const user = db.prepare('SELECT * FROM users WHERE id = ?').get(decoded.userId);
+
+    if (!user) {
+      return res.status(404).json({ error: 'User not found' });
+    }
+
+    if (!verifyPassword(currentPassword, user.password_hash)) {
+      return res.status(401).json({ error: 'Current password is incorrect' });
+    }
+
+    const newPasswordHash = hashPassword(newPassword);
+    db.prepare('UPDATE users SET password_hash = ?, updated_at = ? WHERE id = ?').run(newPasswordHash, now(), user.id);
+
+    // Revoke all other sessions
+    db.prepare('DELETE FROM sessions WHERE user_id = ? AND token_hash != ?').run(user.id, hashToken(req.cookies.refresh_token || ''));
+
+    res.json({ message: 'Password changed successfully. Please log in again.' });
+  } catch (error) {
+    console.error('Change password error:', error);
+    res.status(500).json({ error: 'Failed to change password' });
+  }
+});
+
+// Logout all sessions
+router.post('/logout-all', async (req, res) => {
+  try {
+    let token = null;
+    const authHeader = req.headers.authorization;
+    if (authHeader && authHeader.startsWith('Bearer ')) {
+      token = authHeader.substring(7);
+    }
+    if (!token && req.cookies && req.cookies.access_token) {
+      token = req.cookies.access_token;
+    }
+    if (!token && req.headers.cookie) {
+      const cookies = req.headers.cookie.split(';').reduce((acc, cookie) => {
+        const [key, value] = cookie.trim().split('=');
+        if (key && value) acc[key] = value;
+        return acc;
+      }, {});
+      if (cookies.access_token) {
+        token = cookies.access_token;
+      }
+    }
+
+    if (!token) {
+      return res.status(401).json({ error: 'No token provided' });
+    }
+
+    const decoded = jwt.verify(token, JWT_SECRET);
+    const db = getDb();
+
+    // Delete all sessions for this user
+    db.prepare('DELETE FROM sessions WHERE user_id = ?').run(decoded.userId);
+
+    clearAuthCookies(res);
+    res.json({ message: 'Logged out of all sessions' });
+  } catch (error) {
+    console.error('Logout all error:', error);
+    res.status(500).json({ error: 'Failed to logout all sessions' });
+  }
+});
+
+// Get user sessions
+router.get('/sessions', async (req, res) => {
+  try {
+    let token = null;
+    const authHeader = req.headers.authorization;
+    if (authHeader && authHeader.startsWith('Bearer ')) {
+      token = authHeader.substring(7);
+    }
+    if (!token && req.cookies && req.cookies.access_token) {
+      token = req.cookies.access_token;
+    }
+    if (!token && req.headers.cookie) {
+      const cookies = req.headers.cookie.split(';').reduce((acc, cookie) => {
+        const [key, value] = cookie.trim().split('=');
+        if (key && value) acc[key] = value;
+        return acc;
+      }, {});
+      if (cookies.access_token) {
+        token = cookies.access_token;
+      }
+    }
+
+    if (!token) {
+      return res.status(401).json({ error: 'No token provided' });
+    }
+
+    const decoded = jwt.verify(token, JWT_SECRET);
+    const db = getDb();
+
+    // Get current session token hash
+    const refreshToken = req.cookies.refresh_token;
+    const currentTokenHash = refreshToken ? hashToken(refreshToken) : null;
+
+    const sessions = db.prepare(`
+      SELECT id, token_hash, expires_at, created_at
+      FROM sessions
+      WHERE user_id = ? AND expires_at > ?
+      ORDER BY created_at DESC
+    `).all(decoded.userId, now());
+
+    // Add device info (in real app, store this at session creation)
+    const enrichedSessions = sessions.map(s => ({
+      id: s.id,
+      device: 'Unknown Device', // Would need to store user-agent at creation
+      ip: 'Unknown IP', // Would need to store IP at creation
+      location: 'Unknown',
+      last_active: s.expires_at - 24 * 60 * 60 * 1000, // Approximate
+      is_current: currentTokenHash === s.token_hash,
+    }));
+
+    res.json({ sessions: enrichedSessions });
+  } catch (error) {
+    console.error('Get sessions error:', error);
+    res.status(500).json({ error: 'Failed to get sessions' });
+  }
+});
+
+// Revoke a specific session
+router.delete('/sessions/:sessionId', async (req, res) => {
+  try {
+    let token = null;
+    const authHeader = req.headers.authorization;
+    if (authHeader && authHeader.startsWith('Bearer ')) {
+      token = authHeader.substring(7);
+    }
+    if (!token && req.cookies && req.cookies.access_token) {
+      token = req.cookies.access_token;
+    }
+    if (!token && req.headers.cookie) {
+      const cookies = req.headers.cookie.split(';').reduce((acc, cookie) => {
+        const [key, value] = cookie.trim().split('=');
+        if (key && value) acc[key] = value;
+        return acc;
+      }, {});
+      if (cookies.access_token) {
+        token = cookies.access_token;
+      }
+    }
+
+    if (!token) {
+      return res.status(401).json({ error: 'No token provided' });
+    }
+
+    const decoded = jwt.verify(token, JWT_SECRET);
+    const { sessionId } = req.params;
+
+    const db = getDb();
+    const result = db.prepare('DELETE FROM sessions WHERE id = ? AND user_id = ?').run(sessionId, decoded.userId);
+
+    if (result.changes === 0) {
+      return res.status(404).json({ error: 'Session not found' });
+    }
+
+    res.json({ message: 'Session revoked' });
+  } catch (error) {
+    console.error('Revoke session error:', error);
+    res.status(500).json({ error: 'Failed to revoke session' });
+  }
+});
+
 export default router;

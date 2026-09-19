@@ -251,6 +251,80 @@ export const api = {
   async getUsageLogs(limit = 50, offset = 0) {
     return fetchWithAuth(`/usage/logs?limit=${limit}&offset=${offset}`);
   },
+
+  // Combos
+  async getCombos() {
+    return fetchWithAuth('/combos');
+  },
+
+  async createCombo(data) {
+    return fetchWithAuth('/combos', {
+      method: 'POST',
+      body: JSON.stringify(data),
+    });
+  },
+
+  async updateCombo(id, data) {
+    return fetchWithAuth(`/combos/${id}`, {
+      method: 'PATCH',
+      body: JSON.stringify(data),
+    });
+  },
+
+  async deleteCombo(id) {
+    return fetchWithAuth(`/combos/${id}`, {
+      method: 'DELETE',
+    });
+  },
+
+  // Account & Security
+  async changePassword(currentPassword, newPassword) {
+    return fetchWithAuth('/auth/change-password', {
+      method: 'POST',
+      body: JSON.stringify({ currentPassword, newPassword }),
+    });
+  },
+
+  async logoutAll() {
+    return fetchWithAuth('/auth/logout-all', {
+      method: 'POST',
+    });
+  },
+
+  async getSessions() {
+    return fetchWithAuth('/auth/sessions');
+  },
+
+  async revokeSession(sessionId) {
+    return fetchWithAuth(`/auth/sessions/${sessionId}`, {
+      method: 'DELETE',
+    });
+  },
+
+  // Generic request methods
+  async get(endpoint) {
+    return fetchWithAuth(endpoint);
+  },
+
+  async post(endpoint, data) {
+    return fetchWithAuth(endpoint, {
+      method: 'POST',
+      body: JSON.stringify(data),
+    });
+  },
+
+  async patch(endpoint, data) {
+    return fetchWithAuth(endpoint, {
+      method: 'PATCH',
+      body: JSON.stringify(data),
+    });
+  },
+
+  async delete(endpoint) {
+    return fetchWithAuth(endpoint, {
+      method: 'DELETE',
+    });
+  },
 };
 
 export default api;

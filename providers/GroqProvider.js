@@ -12,13 +12,15 @@ export class GroqProvider extends BaseProvider {
   }
 
   getModels() {
+    // Current official Groq production chat-capable models (as of 2026)
+    // Deprecated models (llama-3.1-8b-instant, llama-3.3-70b-versatile) removed per Groq deprecation Aug 16, 2026
     return [
-      { id: 'llama-3.1-405b', name: 'Llama 3.1 405B', context: '128k', tier: 'flagship' },
-      { id: 'llama-3.1-70b', name: 'Llama 3.1 70B', context: '128k', tier: 'flagship' },
-      { id: 'llama-3.1-8b', name: 'Llama 3.1 8B', context: '128k', tier: 'fast' },
-      { id: 'mixtral-8x7b', name: 'Mixtral 8x7B', context: '32k', tier: 'flagship' },
-      { id: 'gemma-7b-it', name: 'Gemma 7B IT', context: '8k', tier: 'fast' },
-      { id: 'gemma2-9b-it', name: 'Gemma 2 9B IT', context: '8k', tier: 'fast' },
+      { id: 'openai/gpt-oss-120b', name: 'GPT-OSS 120B', context: '128k', tier: 'flagship' },
+      { id: 'openai/gpt-oss-20b', name: 'GPT-OSS 20B', context: '128k', tier: 'fast' },
+      { id: 'qwen/qwen3-32b', name: 'Qwen 3 32B', context: '128k', tier: 'flagship' },
+      { id: 'qwen/qwen3-8b', name: 'Qwen 3 8B', context: '128k', tier: 'fast' },
+      { id: 'groq/compound', name: 'Compound', context: '128k', tier: 'flagship' },
+      { id: 'groq/compound-mini', name: 'Compound Mini', context: '128k', tier: 'fast' },
     ];
   }
 

@@ -1,13 +1,7 @@
 /* Galactus AI - Provider/Combo Selector Component */
 import { useState, useRef, useEffect } from 'react';
-
-const providers = [
-  { id: 'openai', name: 'OpenAI', status: 'healthy', models: 12, color: '#00A67E' },
-  { id: 'anthropic', name: 'Anthropic', status: 'healthy', models: 8, color: '#D97757' },
-  { id: 'google', name: 'Google', status: 'healthy', models: 15, color: '#4285F4' },
-  { id: 'deepseek', name: 'DeepSeek', status: 'degraded', models: 6, color: '#FF6B35' },
-  { id: 'openrouter', name: 'OpenRouter', status: 'healthy', models: 200, color: '#6366F1' },
-];
+import api from '../services/api.js';
+import { getAllProvidersMetadata } from '../../providers/index.js';
 
 const combos = [
   { id: 'flagship-fallback', name: 'Flagship Fallback', models: ['gpt-4o', 'claude-3.5-sonnet', 'gemini-1.5-pro'], priority: 'Quality First', description: 'Best models with automatic failover' },
@@ -20,12 +14,14 @@ const statusColors = {
   healthy: 'var(--color-success)',
   degraded: 'var(--color-warning)',
   down: 'var(--color-error)',
+  not_configured: 'var(--color-text-tertiary)',
 };
 
 const statusLabels = {
   healthy: 'Healthy',
   degraded: 'Degraded',
   down: 'Down',
+  not_configured: 'Not Connected',
 };
 
 export default function ProviderComboSelector({
@@ -37,7 +33,25 @@ export default function ProviderComboSelector({
 }) {
   const [activeTab, setActiveTab] = useState('providers');
   const [isOpen, setIsOpen] = useState(false);
+  const [userProviders, setUserProviders] = useState([]);
   const dropdownRef = useRef(null);
+
+  // Load all provider metadata from registry
+  const allProvidersMetadata = getAllProvidersMetadata();
+
+  // Load user's configured providers
+  useEffect(() => {
+    async function loadUserProviders() {
+      try {
+        const data = await api.getUserProviders();
+        setUserProviders(data.providers);
+      } catch (error) {
+        console.error('Failed to load user providers:', error);
+        setUserProviders([]);
+      }
+    }
+    loadUserProviders();
+  }, []);
 
   useEffect(() => {
     function handleClickOutside(event) {
@@ -48,6 +62,31 @@ export default function ProviderComboSelector({
     document.addEventListener('mousedown', handleClickOutside);
     return () => document.removeEventListener('mousedown', handleClickOutside);
   }, []);
+
+  // Map all providers with their connection status from user's config
+  const providers = allProvidersMetadata.map(meta => {
+    const userConfig = userProviders.find(p => p.provider === meta.id);
+    return {
+      id: meta.id,
+      name: meta.name,
+      color: meta.color,
+      icon: meta.icon,
+      iconFallback: meta.iconFallback,
+      description: meta.description,
+      requiresApiKey: meta.requiresApiKey,
+      status: userConfig ? (userConfig.enabled ? 'healthy' : 'disabled') : 'not_configured',
+      connected: !!userConfig && userConfig.enabled,
+    };
+  });
+
+  // Filter combos to only show those with available providers
+  const availableComboIds = new Set(providers.filter(p => p.connected).map(p => p.id));
+  const availableCombos = combos.filter(combo =>
+    combo.models.some(modelId => {
+      const providerId = modelId.split('/')[0];
+      return availableComboIds.has(providerId);
+    })
+  );
 
   const currentProvider = providers.find(p => p.id === selectedProvider) || providers[0];
   const currentCombo = combos.find(c => c.id === selectedCombo) || combos[0];
@@ -88,15 +127,15 @@ export default function ProviderComboSelector({
           <>
             <span
               className="selector-status-dot"
-              style={{ backgroundColor: statusColors[currentProvider.status] }}
-              aria-label={`${currentProvider.name} is ${statusLabels[currentProvider.status]}`}
+              style={{ backgroundColor: statusColors[currentProvider?.status || 'not_configured'] }}
+              aria-label={`${currentProvider?.name || 'Provider'} is ${statusLabels[currentProvider?.status || 'not_configured']}`}
             />
-            <span className="selector-name">{currentProvider.name}</span>
+            <span className="selector-name">{currentProvider?.name || 'Select Provider'}</span>
           </>
         ) : (
           <>
             <span className="selector-combo-icon" aria-hidden="true">🔗</span>
-            <span className="selector-name">{currentCombo.name}</span>
+            <span className="selector-name">{currentCombo?.name || 'Select Combo'}</span>
           </>
         )}
         <span className="selector-chevron" aria-hidden="true">{isOpen ? '▲' : '▼'}</span>
@@ -109,13 +148,17 @@ export default function ProviderComboSelector({
               {providers.map((provider) => (
                 <button
                   key={provider.id}
-                  className={`selector-item ${provider.id === selectedProvider ? 'selected' : ''}`}
+                  className={`selector-item ${provider.id === selectedProvider ? 'selected' : ''} ${!provider.connected ? 'disabled' : ''}`}
                   role="option"
                   aria-selected={provider.id === selectedProvider}
+                  aria-disabled={!provider.connected}
                   onClick={() => {
-                    onSelectProvider(provider.id);
-                    setIsOpen(false);
+                    if (provider.connected) {
+                      onSelectProvider(provider.id);
+                      setIsOpen(false);
+                    }
                   }}
+                  disabled={!provider.connected}
                 >
                   <div className="provider-item-info">
                     <div className="provider-item-header">
@@ -128,7 +171,6 @@ export default function ProviderComboSelector({
                     </div>
                     <div className="provider-item-meta">
                       <span className={`provider-status ${provider.status}`}>{statusLabels[provider.status]}</span>
-                      <span className="provider-models">• {provider.models} models</span>
                     </div>
                   </div>
                   {provider.id === selectedProvider && (
@@ -139,7 +181,7 @@ export default function ProviderComboSelector({
             </div>
           ) : (
             <div className="selector-list" id="combos-panel" role="tabpanel" aria-labelledby="combos-tab">
-              {combos.map((combo) => (
+              {availableCombos.map((combo) => (
                 <button
                   key={combo.id}
                   className={`selector-item ${combo.id === selectedCombo ? 'selected' : ''}`}

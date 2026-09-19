@@ -9,6 +9,7 @@ import conversationRoutes from './routes/conversations.js';
 import providerRoutes from './routes/providers.js';
 import chatRoutes from './routes/chat.js';
 import usageRoutes from './routes/usage.js';
+import combosRoutes from './routes/combos.js';
 
 dotenv.config();
 
@@ -68,6 +69,7 @@ app.use('/api/conversations', conversationRoutes);
 app.use('/api/providers', providerRoutes);
 app.use('/api/chat', chatRoutes);
 app.use('/api/usage', usageRoutes);
+app.use('/api/combos', combosRoutes);
 
 // Initialize database (async, but routes are already registered)
 initDatabase().then(() => {

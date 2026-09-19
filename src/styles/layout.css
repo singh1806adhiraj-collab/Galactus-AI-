@@ -1080,7 +1080,7 @@
   border-radius: var(--radius-lg);
   box-shadow: var(--shadow-xl);
   overflow: hidden;
-  animation: slideDown 0.15s ease-out;
+  animation: slideUp 0.15s ease-out;
 }
 
 @keyframes slideDown {
@@ -1302,7 +1302,7 @@
   border-radius: var(--radius-lg);
   box-shadow: var(--shadow-xl);
   overflow: hidden;
-  animation: slideDown 0.15s ease-out;
+  animation: slideUp 0.15s ease-out;
 }
 
 .selector-list {
@@ -2486,7 +2486,7 @@
 
 .model-selector-dropdown {
   position: absolute;
-  top: calc(100% + var(--space-2));
+  bottom: calc(100% + var(--space-2));
   left: 0;
   right: 0;
   min-width: 300px;
@@ -2497,7 +2497,7 @@
   box-shadow: var(--shadow-xl);
   z-index: var(--z-dropdown);
   overflow: hidden;
-  animation: slideDown 0.15s ease-out;
+  animation: slideUp 0.15s ease-out;
 }
 
 .model-selector-search {
@@ -2725,7 +2725,7 @@
 
 .selector-dropdown {
   position: absolute;
-  top: calc(100% + var(--space-2));
+  bottom: calc(100% + var(--space-2));
   left: 0;
   right: 0;
   min-width: 300px;
@@ -2736,7 +2736,7 @@
   box-shadow: var(--shadow-xl);
   z-index: var(--z-dropdown);
   overflow: hidden;
-  animation: slideDown 0.15s ease-out;
+  animation: slideUp 0.15s ease-out;
 }
 
 .selector-list {
@@ -3339,7 +3339,7 @@
 
 .theme-toggle-dropdown {
   position: absolute;
-  top: calc(100% + var(--space-2));
+  bottom: calc(100% + var(--space-2));
   right: 0;
   min-width: 180px;
   background: var(--color-bg-surface);
@@ -3348,7 +3348,7 @@
   box-shadow: var(--shadow-xl);
   z-index: var(--z-dropdown);
   overflow: hidden;
-  animation: slideDown 0.15s ease-out;
+  animation: slideUp 0.15s ease-out;
 }
 
 .theme-toggle-item {
@@ -4187,7 +4187,7 @@
 
 .user-menu-dropdown {
   position: absolute;
-  top: calc(100% + var(--space-2));
+  bottom: calc(100% + var(--space-2));
   right: 0;
   min-width: 240px;
   background: var(--color-bg-surface);
@@ -4196,7 +4196,7 @@
   box-shadow: var(--shadow-xl);
   z-index: var(--z-dropdown);
   overflow: hidden;
-  animation: slideDown 0.15s ease-out;
+  animation: slideUp 0.15s ease-out;
 }
 
 .user-menu-header {

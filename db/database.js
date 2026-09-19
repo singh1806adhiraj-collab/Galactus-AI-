@@ -115,6 +115,21 @@ function createTables() {
       FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE
     )
   `);
+
+  // Combos table for saved provider+model configurations
+  db.exec(`
+    CREATE TABLE IF NOT EXISTS combos (
+      id TEXT PRIMARY KEY,
+      user_id TEXT NOT NULL,
+      name TEXT NOT NULL,
+      models TEXT NOT NULL, -- JSON array of model IDs
+      priority TEXT DEFAULT 'Balanced',
+      description TEXT DEFAULT '',
+      created_at INTEGER NOT NULL,
+      updated_at INTEGER NOT NULL,
+      FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE
+    )
+  `);
 }
 
 function createIndexes() {
@@ -128,6 +143,8 @@ function createIndexes() {
     CREATE INDEX IF NOT EXISTS idx_usage_logs_created_at ON usage_logs(created_at);
     CREATE INDEX IF NOT EXISTS idx_sessions_user_id ON sessions(user_id);
     CREATE INDEX IF NOT EXISTS idx_sessions_token_hash ON sessions(token_hash);
+    CREATE INDEX IF NOT EXISTS idx_combos_user_id ON combos(user_id);
+    CREATE INDEX IF NOT EXISTS idx_combos_updated_at ON combos(updated_at DESC);
   `);
 }
 

@@ -1,6 +1,6 @@
 /* Galactus AI - Composer Component */
 import { useState, useRef, useEffect } from 'react';
-import ModelSelector from './ModelSelector.jsx';
+import DynamicModelSelector from './DynamicModelSelector.jsx';
 import ProviderComboSelector from './ProviderComboSelector.jsx';
 import { useAuth } from '../context/AuthContext.jsx';
 import api from '../services/api.js';
@@ -100,9 +100,10 @@ export default function Composer({
       {/* Model/Provider Controls Row - above the main input */}
       <div className="composer-controls-row">
         <div className="composer-controls-left">
-          <ModelSelector
+          <DynamicModelSelector
             selectedModel={selectedModel}
             onSelect={handleModelSelect}
+            selectedProvider={selectedProvider}
             className="composer-model-selector"
             placeholder="Select model"
           />
