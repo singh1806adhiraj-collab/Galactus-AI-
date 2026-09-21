@@ -2,6 +2,7 @@
 import { useState, useEffect } from 'react';
 import { useAuth } from '../context/AuthContext.jsx';
 import api from '../services/api.js';
+import { getAllProvidersMetadata } from '../../providers/index.js';
 
 const tierIcons = {
   flagship: '⭐',
@@ -13,6 +14,12 @@ const tierLabels = {
   flagship: 'Flagship',
   fast: 'Fast',
   reasoning: 'Reasoning',
+};
+
+const allProvidersMetadata = getAllProvidersMetadata();
+const getProviderIcon = (providerId) => {
+  const meta = allProvidersMetadata.find(p => p.id === providerId);
+  return meta?.icon || meta?.iconFallback || '🔧';
 };
 
 export default function UsagePage() {
@@ -496,12 +503,12 @@ export default function UsagePage() {
                   <div style={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between' }}>
                     <div>
                       <div style={{ display: 'flex', alignItems: 'center', gap: 'var(--space-2)', marginBottom: 'var(--space-2)' }}>
-                        <span style={{ fontSize: 'var(--font-size-xl)' }}>
-                          {providerId === 'openai' ? '🤖' :
-                           providerId === 'anthropic' ? '🧠' :
-                           providerId === 'google' ? '🔮' :
-                           providerId === 'groq' ? '⚡' : '🔧'}
-                        </span>
+                        <img
+                          src={getProviderIcon(providerId)}
+                          alt=""
+                          className="provider-logo-small"
+                          style={{ width: '24px', height: '24px', flexShrink: 0 }}
+                        />
                         <span style={{ fontWeight: 'var(--font-weight-semibold)', textTransform: 'capitalize' }}>
                           {providerId}
                         </span>

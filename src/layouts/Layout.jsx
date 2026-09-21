@@ -3,6 +3,7 @@ import { Outlet, NavLink, useLocation } from 'react-router-dom';
 import { useState } from 'react';
 import ThemeToggle from '../components/ThemeToggle.jsx';
 import UserMenu from '../components/UserMenu.jsx';
+import galactusLogo from "../assets/GalactusAI.jpeg";
 
 const navItems = [
   { path: '/', label: 'Home', icon: '💬' },
@@ -23,7 +24,10 @@ function Sidebar({ isOpen, onClose }) {
         aria-label="Main navigation"
       >
         <div className="sidebar-header">
-          <h1 className="logo">Galactus AI</h1>
+          <a href="/" className="logo" aria-label="Galactus AI Home">
+            <img src={galactusLogo} alt="" className="logo-icon" width="32" height="32" />
+            <span className="logo-text">Galactus AI</span>
+          </a>
         </div>
         <nav className="sidebar-nav">
           <ul role="list">
@@ -63,7 +67,10 @@ function Header({ onMenuClick }) {
         <button className="mobile-menu-btn" onClick={onMenuClick} aria-label="Toggle navigation menu" aria-expanded="false">
           <span aria-hidden="true">☰</span>
         </button>
-        <h2 className="page-title">Galactus AI</h2>
+        <a href="/" className="page-title" aria-label="Galactus AI Home">
+          <img src={galactusLogo} alt="" className="logo-icon" width="28" height="28" />
+          <span>Galactus AI</span>
+        </a>
       </div>
       <div className="header-right">
         <ThemeToggle />

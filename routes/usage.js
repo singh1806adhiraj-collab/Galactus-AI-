@@ -8,13 +8,34 @@ const router = express.Router();
 const JWT_SECRET = process.env.JWT_SECRET || 'your-super-secret-jwt-key-change-in-production';
 
 function authenticateToken(req, res, next) {
-  const authHeader = req.headers.authorization;
+  let token = null;
 
-  if (!authHeader || !authHeader.startsWith('Bearer ')) {
-    return res.status(401).json({ error: 'No token provided' });
+  // Check Authorization header
+  const authHeader = req.headers.authorization;
+  if (authHeader && authHeader.startsWith('Bearer ')) {
+    token = authHeader.substring(7);
   }
 
-  const token = authHeader.substring(7);
+  // Check cookies
+  if (!token && req.cookies && req.cookies.access_token) {
+    token = req.cookies.access_token;
+  }
+
+  // Fallback: manually parse cookie header
+  if (!token && req.headers.cookie) {
+    const cookies = req.headers.cookie.split(';').reduce((acc, cookie) => {
+      const [key, value] = cookie.trim().split('=');
+      if (key && value) acc[key] = value;
+      return acc;
+    }, {});
+    if (cookies.access_token) {
+      token = cookies.access_token;
+    }
+  }
+
+  if (!token) {
+    return res.status(401).json({ error: 'No token provided' });
+  }
 
   try {
     const decoded = jwt.verify(token, JWT_SECRET);

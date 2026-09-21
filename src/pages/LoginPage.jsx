@@ -2,6 +2,7 @@
 import { useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext.jsx';
+import galactusLogo from "../assets/GalactusAI.jpeg";
 
 export default function LoginPage() {
   const navigate = useNavigate();
@@ -58,7 +59,7 @@ export default function LoginPage() {
         <div className="auth-card">
           <div className="auth-header">
             <div className="auth-logo">
-              <span className="logo-icon" aria-hidden="true">🤖</span>
+              <img src={galactusLogo} alt="" className="logo-icon" width="64" height="64" />
             </div>
             <h1 className="auth-title">Welcome back</h1>
             <p className="auth-subtitle">Sign in to your Galactus AI workspace</p>

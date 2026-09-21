@@ -53,6 +53,10 @@ export default function SettingsPage() {
   const [showSessions, setShowSessions] = useState(false);
 
   const allProvidersMetadata = getAllProvidersMetadata();
+const getProviderIcon = (providerId) => {
+  const meta = allProvidersMetadata.find(p => p.id === providerId);
+  return meta?.icon || meta?.iconFallback || '🔧';
+};
 
   // Load user data on mount
   useEffect(() => {
@@ -538,7 +542,7 @@ export default function SettingsPage() {
                         onClick={() => handleDefaultProviderChange(p.provider)}
                         style={{ display: 'flex', alignItems: 'center', gap: 'var(--space-2)' }}
                       >
-                        <span>{meta?.iconFallback || '🤖'}</span>
+                        <img src={getProviderIcon(p.provider)} alt="" className="provider-logo-small" />
                         <span>{meta?.name || p.provider}</span>
                         {isSelected && <span style={{ fontSize: 'var(--font-size-xs)' }}>✓</span>}
                       </button>
@@ -602,7 +606,7 @@ export default function SettingsPage() {
                         borderRadius: 'var(--radius-lg)'
                       }}>
                         <div style={{ display: 'flex', alignItems: 'center', gap: 'var(--space-3)' }}>
-                          <span style={{ fontSize: 'var(--font-size-xl)' }}>{meta?.iconFallback || '🤖'}</span>
+                          <img src={getProviderIcon(p.provider)} alt="" className="provider-logo-small" />
                           <div>
                             <div style={{ fontWeight: 'var(--font-weight-semibold)' }}>{meta?.name || p.provider}</div>
                             <div style={{ fontSize: 'var(--font-size-sm)', color: 'var(--color-text-secondary)' }}>

@@ -3339,7 +3339,7 @@
 
 .theme-toggle-dropdown {
   position: absolute;
-  bottom: calc(100% + var(--space-2));
+  top: calc(100% + var(--space-2));
   right: 0;
   min-width: 180px;
   background: var(--color-bg-surface);
@@ -3348,7 +3348,7 @@
   box-shadow: var(--shadow-xl);
   z-index: var(--z-dropdown);
   overflow: hidden;
-  animation: slideUp 0.15s ease-out;
+  animation: slideDown 0.15s ease-out;
 }
 
 .theme-toggle-item {
@@ -4187,7 +4187,7 @@
 
 .user-menu-dropdown {
   position: absolute;
-  bottom: calc(100% + var(--space-2));
+  top: calc(100% + var(--space-2));
   right: 0;
   min-width: 240px;
   background: var(--color-bg-surface);
@@ -4196,7 +4196,7 @@
   box-shadow: var(--shadow-xl);
   z-index: var(--z-dropdown);
   overflow: hidden;
-  animation: slideUp 0.15s ease-out;
+  animation: slideDown 0.15s ease-out;
 }
 
 .user-menu-header {
