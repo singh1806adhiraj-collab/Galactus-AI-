@@ -1,39 +1,33 @@
 /* Galactus AI - Chat Message Component */
-import { useState, useRef, useEffect } from 'react';
+import { useState, useRef, useEffect, useMemo } from 'react';
+import ReactMarkdown from 'react-markdown';
+import remarkGfm from 'remark-gfm';
+
+// Normalize content before Markdown rendering
+// Convert literal <br>, <br/>, <br /> to newlines
+function normalizeContent(content) {
+  if (!content) return content;
+  // Replace <br>, <br/>, <br /> with newlines
+  return content.replace(/<br\s*\/?>/gi, '\n');
+}
+
+// Custom table wrapper component for horizontal scrolling
+function TableWrapper({ children }) {
+  return (
+    <div className="markdown-table-wrapper" role="region" aria-label="Scrollable table">
+      {children}
+    </div>
+  );
+}
+
+const markdownComponents = {
+  table: TableWrapper,
+};
 
 export default function ChatMessage({ message, isStreaming = false }) {
   const [isExpanded, setIsExpanded] = useState(false);
   const messageRef = useRef(null);
-
-  const formatContent = (content) => {
-    if (!content) return null;
-
-    // Split by code blocks first
-    const parts = content.split(/(\n?```[\s\S]*?```\n?)/g);
-
-    return parts.map((part, index) => {
-      if (part.startsWith('```')) {
-        const lines = part.split('\n');
-        const language = lines[0].replace('```', '').trim() || 'text';
-        const code = lines.slice(1, -1).join('\n');
-        return <CodeBlock key={index} language={language} code={code} />;
-      }
-
-      if (!part.trim()) return null;
-
-      // Handle inline code and regular text
-      return (
-        <div key={index} className="message-paragraph">
-          {part.split(/(`[^`]+`)/g).map((segment, segIndex) => {
-            if (segment.startsWith('`') && segment.endsWith('`')) {
-              return <code key={segIndex}>{segment.slice(1, -1)}</code>;
-            }
-            return segment;
-          })}
-        </div>
-      );
-    });
-  };
+  const normalizedContent = useMemo(() => normalizeContent(message.content), [message.content]);
 
   return (
     <div
@@ -43,7 +37,14 @@ export default function ChatMessage({ message, isStreaming = false }) {
     >
       <div className="message-bubble">
         <div className="message-content">
-          {message.content ? formatContent(message.content) : (
+          {normalizedContent ? (
+            <ReactMarkdown
+              remarkPlugins={[remarkGfm]}
+              components={markdownComponents}
+            >
+              {normalizedContent}
+            </ReactMarkdown>
+          ) : (
             <div className="message-placeholder">
               <span className="typing-indicator" aria-label="Galactus is thinking">
                 <span></span><span></span><span></span>
@@ -76,33 +77,6 @@ export default function ChatMessage({ message, isStreaming = false }) {
           </div>
         </div>
       </div>
-    </div>
-  );
-}
-
-function CodeBlock({ language, code }) {
-  const [copied, setCopied] = useState(false);
-
-  const handleCopy = () => {
-    navigator.clipboard.writeText(code);
-    setCopied(true);
-    setTimeout(() => setCopied(false), 2000);
-  };
-
-  return (
-    <div className="code-block">
-      <div className="code-block-header">
-        <span className="code-language">{language}</span>
-        <button
-          className="code-copy-btn"
-          onClick={handleCopy}
-          aria-label={copied ? 'Copied!' : 'Copy code'}
-          title={copied ? 'Copied!' : 'Copy'}
-        >
-          <span aria-hidden="true">{copied ? '✓' : '📋'}</span>
-        </button>
-      </div>
-      <pre><code className={`language-${language}`}>{code}</code></pre>
     </div>
   );
 }

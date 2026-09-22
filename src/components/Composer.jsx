@@ -175,15 +175,6 @@ export default function Composer({
             aria-label="Message input"
             spellCheck="true"
           />
-          <button
-            type="button"
-            className="composer-input-btn voice-btn"
-            disabled={disabled || isStreaming || !text.trim()}
-            aria-label="Voice input"
-            title="Voice"
-          >
-            <span aria-hidden="true">🎤</span>
-          </button>
         </div>
         <div className="composer-send-wrapper">
           {isStreaming ? (

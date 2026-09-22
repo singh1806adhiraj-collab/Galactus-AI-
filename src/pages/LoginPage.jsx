@@ -2,7 +2,7 @@
 import { useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext.jsx';
-import galactusLogo from "../assets/GalactusAI.jpeg";
+import galactusLogo from "../assets/GalactusAI.png";
 
 export default function LoginPage() {
   const navigate = useNavigate();

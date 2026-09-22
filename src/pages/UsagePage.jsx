@@ -2,7 +2,33 @@
 import { useState, useEffect } from 'react';
 import { useAuth } from '../context/AuthContext.jsx';
 import api from '../services/api.js';
-import { getAllProvidersMetadata } from '../../providers/index.js';
+
+// Import real provider logo assets
+import openaiLogo from '../assets/providers/openai.webp';
+import anthropicLogo from '../assets/providers/anthropic.webp';
+import googleLogo from '../assets/providers/google.webp';
+import deepseekLogo from '../assets/providers/deepseek.webp';
+import openrouterLogo from '../assets/providers/openrouter.webp';
+import mistralLogo from '../assets/providers/mistral.webp';
+import grokLogo from '../assets/providers/grok.webp';
+import groqLogo from '../assets/providers/groq.webp';
+
+const providerLogos = {
+  openai: openaiLogo,
+  anthropic: anthropicLogo,
+  google: googleLogo,
+  gemini: googleLogo, // normalize gemini -> google
+  deepseek: deepseekLogo,
+  openrouter: openrouterLogo,
+  mistral: mistralLogo,
+  xai: grokLogo,
+  grok: grokLogo, // normalize grok -> xai
+  groq: groqLogo,
+};
+
+const getProviderLogo = (providerId) => {
+  return providerLogos[providerId.toLowerCase()] || null;
+};
 
 const tierIcons = {
   flagship: '⭐',
@@ -14,12 +40,6 @@ const tierLabels = {
   flagship: 'Flagship',
   fast: 'Fast',
   reasoning: 'Reasoning',
-};
-
-const allProvidersMetadata = getAllProvidersMetadata();
-const getProviderIcon = (providerId) => {
-  const meta = allProvidersMetadata.find(p => p.id === providerId);
-  return meta?.icon || meta?.iconFallback || '🔧';
 };
 
 export default function UsagePage() {
@@ -299,26 +319,38 @@ export default function UsagePage() {
               Usage by Provider
             </h2>
             <div className="stats-grid" style={{ gridTemplateColumns: 'repeat(auto-fill, minmax(280px, 1fr))' }}>
-              {byProvider.length > 0 ? byProvider.map((p) => (
-                <div key={p.provider} className="stat-card">
-                  <div className="stat-icon" style={{ background: 'var(--color-accent-bg)', color: 'var(--color-accent-primary)' }}>
-                    {p.provider.charAt(0).toUpperCase() + p.provider.slice(1)}
+              {byProvider.length > 0 ? byProvider.map((p) => {
+                const logo = getProviderLogo(p.provider);
+                return (
+                  <div key={p.provider} className="stat-card">
+                    <div className="stat-icon" style={{ background: 'var(--color-accent-bg)', color: 'var(--color-accent-primary)' }}>
+                      {logo ? (
+                        <img
+                          src={logo}
+                          alt={p.provider}
+                          className="provider-logo-small"
+                          style={{ width: '32px', height: '32px', objectFit: 'contain', display: 'block' }}
+                        />
+                      ) : (
+                        p.provider.charAt(0).toUpperCase() + p.provider.slice(1)
+                      )}
+                    </div>
+                    <div style={{ flex: 1 }}>
+                      <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 'var(--space-1)' }}>
+                        <span style={{ fontWeight: 'var(--font-weight-medium)' }}>{p.provider}</span>
+                        <span style={{ color: 'var(--color-text-muted)', fontSize: 'var(--font-size-sm)' }}>{formatNumber(p.requests)} requests</span>
+                      </div>
+                      <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: 'var(--font-size-sm)', color: 'var(--color-text-secondary)' }}>
+                        <span>📥 {formatNumber(p.input_tokens)}</span>
+                        <span>📤 {formatNumber(p.output_tokens)}</span>
+                      </div>
+                      <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: 'var(--font-size-sm)', color: 'var(--color-text-secondary)', marginTop: 'var(--space-1)' }}>
+                        <span>Avg: {p.avg_latency ? formatDuration(Math.round(p.avg_latency)) : 'N/A'}</span>
+                      </div>
+                    </div>
                   </div>
-                  <div style={{ flex: 1 }}>
-                    <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 'var(--space-1)' }}>
-                      <span style={{ fontWeight: 'var(--font-weight-medium)' }}>{p.provider}</span>
-                      <span style={{ color: 'var(--color-text-muted)', fontSize: 'var(--font-size-sm)' }}>{formatNumber(p.requests)} requests</span>
-                    </div>
-                    <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: 'var(--font-size-sm)', color: 'var(--color-text-secondary)' }}>
-                      <span>📥 {formatNumber(p.input_tokens)}</span>
-                      <span>📤 {formatNumber(p.output_tokens)}</span>
-                    </div>
-                    <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: 'var(--font-size-sm)', color: 'var(--color-text-secondary)', marginTop: 'var(--space-1)' }}>
-                      <span>Avg: {p.avg_latency ? formatDuration(Math.round(p.avg_latency)) : 'N/A'}</span>
-                    </div>
-                  </div>
-                </div>
-              )) : (
+                );
+              }) : (
                 <div className="stat-card" style={{ gridColumn: '1 / -1', textAlign: 'center', color: 'var(--color-text-muted)' }}>
                   No usage data for selected period
                 </div>
@@ -498,44 +530,52 @@ export default function UsagePage() {
 
           {Object.keys(healthData).length > 0 ? (
             <div className="stats-grid" style={{ gridTemplateColumns: 'repeat(auto-fill, minmax(300px, 1fr))' }}>
-              {Object.entries(healthData).map(([providerId, health]) => (
-                <div key={providerId} className="stat-card">
-                  <div style={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between' }}>
-                    <div>
-                      <div style={{ display: 'flex', alignItems: 'center', gap: 'var(--space-2)', marginBottom: 'var(--space-2)' }}>
-                        <img
-                          src={getProviderIcon(providerId)}
-                          alt=""
-                          className="provider-logo-small"
-                          style={{ width: '24px', height: '24px', flexShrink: 0 }}
-                        />
-                        <span style={{ fontWeight: 'var(--font-weight-semibold)', textTransform: 'capitalize' }}>
-                          {providerId}
-                        </span>
-                        <span style={{
-                          display: 'inline-block',
-                          padding: '2px 8px',
-                          borderRadius: 'var(--radius-full)',
-                          fontSize: 'var(--font-size-xs)',
-                          fontWeight: 'var(--font-weight-medium)',
-                          background: `${getHealthStatusColor(health.status)}20`,
-                          color: getHealthStatusColor(health.status),
-                        }}>
-                          {getHealthStatusLabel(health.status)}
-                        </span>
+              {Object.entries(healthData).map(([providerId, health]) => {
+                const logo = getProviderLogo(providerId);
+                return (
+                  <div key={providerId} className="stat-card">
+                    <div style={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between' }}>
+                      <div>
+                        <div style={{ display: 'flex', alignItems: 'center', gap: 'var(--space-2)', marginBottom: 'var(--space-2)' }}>
+                          {logo ? (
+                            <img
+                              src={logo}
+                              alt={providerId}
+                              className="provider-logo-small"
+                            />
+                          ) : (
+                            <span className="provider-logo-small" style={{ width: '24px', height: '24px', display: 'flex', alignItems: 'center', justifyContent: 'center', background: 'var(--color-bg-elevated)', borderRadius: 'var(--radius-sm)' }}>
+                              {providerId.charAt(0).toUpperCase()}
+                            </span>
+                          )}
+                          <span style={{ fontWeight: 'var(--font-weight-semibold)', textTransform: 'capitalize' }}>
+                            {providerId}
+                          </span>
+                          <span style={{
+                            display: 'inline-block',
+                            padding: '2px 8px',
+                            borderRadius: 'var(--radius-full)',
+                            fontSize: 'var(--font-size-xs)',
+                            fontWeight: 'var(--font-weight-medium)',
+                            background: `${getHealthStatusColor(health.status)}20`,
+                            color: getHealthStatusColor(health.status),
+                          }}>
+                            {getHealthStatusLabel(health.status)}
+                          </span>
+                        </div>
+                        <div style={{ fontSize: 'var(--font-size-sm)', color: 'var(--color-text-secondary)' }}>
+                          {health.message || 'No details available'}
+                        </div>
                       </div>
-                      <div style={{ fontSize: 'var(--font-size-sm)', color: 'var(--color-text-secondary)' }}>
-                        {health.message || 'No details available'}
-                      </div>
+                      {health.lastChecked && (
+                        <div style={{ textAlign: 'right', fontSize: 'var(--font-size-xs)', color: 'var(--color-text-muted)' }}>
+                          Last checked: {new Date(health.lastChecked).toLocaleTimeString()}
+                        </div>
+                      )}
                     </div>
-                    {health.lastChecked && (
-                      <div style={{ textAlign: 'right', fontSize: 'var(--font-size-xs)', color: 'var(--color-text-muted)' }}>
-                        Last checked: {new Date(health.lastChecked).toLocaleTimeString()}
-                      </div>
-                    )}
                   </div>
-                </div>
-              ))}
+                );
+              })}
             </div>
           ) : (
             <div className="page-content-placeholder">

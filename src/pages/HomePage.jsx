@@ -1,21 +1,46 @@
 /* Galactus AI - Home Page (AI Chat Workspace) */
-import { useState, useRef, useEffect, useCallback } from 'react';
+import React, { useState, useRef, useEffect, useCallback, useMemo } from 'react';
+import { useParams, useNavigate } from 'react-router-dom';
 import ChatMessage from '../components/ChatMessage.jsx';
 import Composer from '../components/Composer.jsx';
 import Terminal from '../components/Terminal.jsx';
 import ContextSidebar from '../components/ContextSidebar.jsx';
 import api from '../services/api.js';
 
+function generateId() {
+  return crypto.randomUUID();
+}
+
+function generateTitleFromMessage(content) {
+  if (!content) return 'New Conversation';
+  // Clean and truncate first user message for title
+  const cleaned = content.trim().replace(/\s+/g, ' ');
+  const words = cleaned.split(' ');
+  if (words.length <= 8) return cleaned.charAt(0).toUpperCase() + cleaned.slice(1);
+  return words.slice(0, 8).join(' ') + '...';
+}
+
 export default function HomePage() {
+  const { conversationId } = useParams();
+  const navigate = useNavigate();
   const [messages, setMessages] = useState([]);
   const [isStreaming, setIsStreaming] = useState(false);
   const [terminalOpen, setTerminalOpen] = useState(false);
   const [contextOpen, setContextOpen] = useState(false);
   const [contextTab, setContextTab] = useState('context');
-  const [messageIdCounter, setMessageIdCounter] = useState(1);
+  const [activeConversationId, setActiveConversationId] = useState(null);
+  const [conversationTitle, setConversationTitle] = useState('New Conversation');
   const messagesEndRef = useRef(null);
   const chatContainerRef = useRef(null);
   const abortControllerRef = useRef(null);
+  const isFirstMessage = useRef(false);
+  // Streaming performance: batch updates
+  const pendingContentRef = useRef('');
+  const animationFrameRef = useRef(null);
+
+  // Memoized ChatMessage to prevent re-renders of stable messages
+  const MemoizedChatMessage = useMemo(() => React.memo(ChatMessage), []);
+  const memoizedMessages = useMemo(() => messages, [messages]);
 
   const scrollToBottom = useCallback(() => {
     messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
@@ -24,6 +49,44 @@ export default function HomePage() {
   useEffect(() => {
     scrollToBottom();
   }, [messages, isStreaming, scrollToBottom]);
+
+  // Load conversation when conversationId changes
+  useEffect(() => {
+    if (conversationId) {
+      loadConversation(conversationId);
+    } else {
+      // New conversation
+      setMessages([]);
+      setActiveConversationId(null);
+      setConversationTitle('New Conversation');
+      isFirstMessage.current = true;
+    }
+  }, [conversationId]);
+
+  const loadConversation = async (id) => {
+    try {
+      const data = await api.getConversation(id);
+      if (data.conversation && data.messages) {
+        setActiveConversationId(data.conversation.id);
+        setConversationTitle(data.conversation.title || 'Untitled');
+        // Convert messages to UI format
+        const formattedMessages = data.messages.map(msg => ({
+          id: msg.id,
+          role: msg.role,
+          content: msg.content,
+          timestamp: new Date(msg.created_at).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })
+        }));
+        setMessages(formattedMessages);
+        isFirstMessage.current = false;
+      }
+    } catch (err) {
+      console.error('Failed to load conversation:', err);
+      setMessages([]);
+      setActiveConversationId(null);
+      setConversationTitle('New Conversation');
+      isFirstMessage.current = true;
+    }
+  };
 
   // Keyboard shortcuts
   useEffect(() => {
@@ -60,14 +123,9 @@ export default function HomePage() {
 
   const handleSend = useCallback(async (text, options = {}) => {
     console.log('[DEBUG] handleSend called:', { text, options });
-    let nextId = 1;
-    setMessageIdCounter(prev => {
-      nextId = prev;
-      return prev + 1;
-    });
 
     const userMessage = {
-      id: `msg-${nextId}`,
+      id: generateId(),
       role: 'user',
       content: text,
       timestamp: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })
@@ -76,13 +134,12 @@ export default function HomePage() {
     setMessages(prev => [...prev, userMessage]);
     setIsStreaming(true);
 
-    let assistantIdNum = 0;
-    setMessageIdCounter(prev => {
-      assistantIdNum = prev;
-      return prev + 1;
-    });
-    const assistantId = `msg-${assistantIdNum}`;
+    // Update title from first user message if this is the first message
+    if (isFirstMessage.current && activeConversationId === null) {
+      setConversationTitle(generateTitleFromMessage(text));
+    }
 
+    const assistantId = generateId();
     const assistantMessage = {
       id: assistantId,
       role: 'assistant',
@@ -101,6 +158,7 @@ export default function HomePage() {
 
       // Use the streamMessage API for streaming responses
       for await (const chunk of api.streamMessage([
+        ...messages.map(m => ({ role: m.role, content: m.content })),
         { role: 'user', content: text }
       ], {
         provider: options.provider || 'openai',
@@ -110,16 +168,76 @@ export default function HomePage() {
         chunkCount++;
         streamedContent += chunk;
         console.log(`[DEBUG] Received chunk ${chunkCount}:`, chunk.substring(0, 50));
-        setMessages(prev => prev.map(msg =>
-          msg.id === assistantId ? { ...msg, content: streamedContent } : msg
-        ));
+
+        // Batch streaming updates using requestAnimationFrame
+        pendingContentRef.current = streamedContent;
+        if (!animationFrameRef.current) {
+          animationFrameRef.current = requestAnimationFrame(() => {
+            setMessages(prev => prev.map(msg =>
+              msg.id === assistantId ? { ...msg, content: pendingContentRef.current } : msg
+            ));
+            animationFrameRef.current = null;
+          });
+        }
       }
       console.log('[DEBUG] Stream completed, total chunks:', chunkCount, 'total content:', streamedContent.length);
+
+      // Flush any pending content
+      if (animationFrameRef.current) {
+        cancelAnimationFrame(animationFrameRef.current);
+        animationFrameRef.current = null;
+        setMessages(prev => prev.map(msg =>
+          msg.id === assistantId ? { ...msg, content: pendingContentRef.current } : msg
+        ));
+      }
+
+      let conversationIdToUse = activeConversationId;
+
+      // If this was the first message and no conversation exists yet, create one
+      if (isFirstMessage.current && activeConversationId === null) {
+        try {
+          const conversationData = await api.createConversation(generateTitleFromMessage(text));
+          const newConversationId = conversationData.conversation?.id || conversationData.id;
+
+          if (newConversationId) {
+            conversationIdToUse = newConversationId;
+            setActiveConversationId(newConversationId);
+            // Update URL without reload
+            navigate(`/chat/${newConversationId}`, { replace: true });
+          }
+        } catch (err) {
+          console.error('Failed to create conversation:', err);
+        }
+      }
+
+      // Save both user and assistant messages to the conversation
+      if (conversationIdToUse) {
+        try {
+          // Save user message
+          await api.post(`/conversations/${conversationIdToUse}/messages`, {
+            role: 'user',
+            content: text,
+            model: options.model,
+            provider: options.provider || 'openai'
+          });
+
+          // Save assistant message
+          await api.post(`/conversations/${conversationIdToUse}/messages`, {
+            role: 'assistant',
+            content: streamedContent,
+            model: options.model,
+            provider: options.provider || 'openai'
+          });
+        } catch (err) {
+          console.error('Failed to save messages:', err);
+        }
+      }
 
       // If no chunks received, show a message
       if (chunkCount === 0) {
         console.warn('[DEBUG] No chunks received from stream - provider may be misconfigured');
       }
+      isFirstMessage.current = false;
     } catch (error) {
       console.error('[DEBUG] handleSend error:', error);
       if (error.name !== 'AbortError') {
@@ -133,20 +251,22 @@ export default function HomePage() {
       setIsStreaming(false);
       abortControllerRef.current = null;
     }
-  }, [messageIdCounter]);
+  }, [messages, activeConversationId, navigate]);
 
   const handleStop = useCallback(() => {
     if (abortControllerRef.current) {
       abortControllerRef.current.abort();
     }
+    if (animationFrameRef.current) {
+      cancelAnimationFrame(animationFrameRef.current);
+      animationFrameRef.current = null;
+    }
     setIsStreaming(false);
   }, []);
 
   const handleNewChat = useCallback(() => {
-    setMessages([]);
-    setIsStreaming(false);
-    setMessageIdCounter(1);
-  }, []);
+    navigate('/chat', { replace: true });
+  }, [navigate]);
 
   const handleAttachFiles = useCallback(() => {
     // Placeholder for file attachment
@@ -177,7 +297,7 @@ export default function HomePage() {
             >
               <span aria-hidden="true">➕</span>
             </button>
-            <h1 className="chat-title">New Conversation</h1>
+            <h1 className="chat-title">{conversationTitle}</h1>
           </div>
           <div className="chat-header-right">
             <ContextSidebar
@@ -198,15 +318,15 @@ export default function HomePage() {
         <div className="chat-messages" role="log" aria-live="polite" aria-label="Conversation">
           <div className="messages-inner">
             {/* Centered Welcome State */}
-            {messages.length === 0 && (
+            {messages.length === 0 && !isStreaming && (
               <div className="welcome-state">
                 <h1 className="welcome-title">Welcome to Galactus AI</h1>
               </div>
             )}
 
             {/* Messages */}
-            {messages.map((message, index) => (
-              <ChatMessage
+            {memoizedMessages.map((message, index) => (
+              <MemoizedChatMessage
                 key={message.id || `${message.role}-${index}`}
                 message={message}
                 isStreaming={isStreaming && index === messages.length - 1 && message.role === 'assistant'}

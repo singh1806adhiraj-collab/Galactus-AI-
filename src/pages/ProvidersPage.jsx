@@ -6,6 +6,27 @@ import api from '../services/api.js';
 import { getProviderMetadata, getAllProvidersMetadata } from '../providers/index.js';
 import '../styles/providers.css';
 
+// Import real provider logo assets
+import openaiLogo from '../assets/providers/openai.webp';
+import anthropicLogo from '../assets/providers/anthropic.webp';
+import googleLogo from '../assets/providers/google.webp';
+import deepseekLogo from '../assets/providers/deepseek.webp';
+import openrouterLogo from '../assets/providers/openrouter.webp';
+import mistralLogo from '../assets/providers/mistral.webp';
+import grokLogo from '../assets/providers/grok.webp';
+import groqLogo from '../assets/providers/groq.webp';
+
+const providerLogos = {
+  openai: openaiLogo,
+  anthropic: anthropicLogo,
+  google: googleLogo,
+  deepseek: deepseekLogo,
+  openrouter: openrouterLogo,
+  mistral: mistralLogo,
+  xai: grokLogo,
+  groq: groqLogo,
+};
+
 /**
  * Fixed provider display order as specified
  */
@@ -307,24 +328,20 @@ export default function ProvidersPage() {
             >
               {/* Icon */}
               <div className="provider-icon-wrapper" aria-hidden="true">
-                {metadata.icon && metadata.icon.startsWith('/') ? (
-                  <img
-                    src={metadata.icon}
-                    alt=""
-                    className="provider-icon"
-                    onError={(e) => {
-                      e.target.style.display = 'none';
-                      e.target.nextElementSibling.style.display = 'flex';
-                    }}
-                  />
-                ) : null}
+                <img
+                  src={providerLogos[id]}
+                  alt={metadata.name}
+                  className="provider-icon"
+                  onError={(e) => {
+                    e.target.style.display = 'none';
+                    e.target.nextElementSibling.style.display = 'flex';
+                  }}
+                />
                 <span
                   className="provider-icon-fallback"
-                  style={{
-                    display: metadata.icon && metadata.icon.startsWith('/') ? 'none' : 'flex'
-                  }}
+                  style={{ display: 'none' }}
                 >
-                  {metadata.iconFallback || metadata.icon || '🤖'}
+                  {metadata.iconFallback || '🤖'}
                 </span>
               </div>
 

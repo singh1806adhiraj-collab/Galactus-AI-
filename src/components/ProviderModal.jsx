@@ -3,6 +3,27 @@ import { useState, useEffect, useRef } from 'react';
 import api from '../services/api.js';
 import { getProviderMetadata } from '../providers/index.js';
 
+// Import real provider logo assets
+import openaiLogo from '../assets/providers/openai.webp';
+import anthropicLogo from '../assets/providers/anthropic.webp';
+import googleLogo from '../assets/providers/google.webp';
+import deepseekLogo from '../assets/providers/deepseek.webp';
+import openrouterLogo from '../assets/providers/openrouter.webp';
+import mistralLogo from '../assets/providers/mistral.webp';
+import grokLogo from '../assets/providers/grok.webp';
+import groqLogo from '../assets/providers/groq.webp';
+
+const providerLogos = {
+  openai: openaiLogo,
+  anthropic: anthropicLogo,
+  google: googleLogo,
+  deepseek: deepseekLogo,
+  openrouter: openrouterLogo,
+  mistral: mistralLogo,
+  xai: grokLogo,
+  groq: groqLogo,
+};
+
 const INITIAL_FORM_STATE = {
   provider: '',
   apiKey: '',
@@ -165,6 +186,7 @@ export default function ProviderModal({
 
   const isEditing = !!providerToEdit;
   const selectedProviderMeta = formData.provider ? getProviderMetadata(formData.provider) : null;
+  const selectedProviderLogo = formData.provider ? providerLogos[formData.provider] : null;
 
   return (
     <div className="modal-overlay" onClick={handleOverlayClick}>
@@ -186,28 +208,36 @@ export default function ProviderModal({
         <form id="provider-form" onSubmit={handleSubmit} className="modal-body">
           <div className="form-group">
             <label htmlFor="provider" className="form-label">Provider</label>
-            <select
-              id="provider"
-              className="form-select"
-              value={formData.provider}
-              onChange={(e) => handleInputChange('provider', e.target.value)}
-              required
-              disabled={isEditing || status === 'saving' || status === 'testing'}
-            >
-              <option value="">Select a provider</option>
-              {availableProviders.map((provider) => {
-                const isConfigured = configuredProviders.some(p => p.provider === provider.id);
-                return (
-                  <option
-                    key={provider.id}
-                    value={provider.id}
-                    disabled={isConfigured && !isEditing}
-                  >
-                    {provider.name} {isConfigured ? '(configured)' : ''}
-                  </option>
-                );
-              })}
-            </select>
+            <div className="provider-select-wrapper">
+              <img
+                src={selectedProviderLogo}
+                alt=""
+                className="provider-select-logo"
+                style={{ display: selectedProviderLogo ? 'block' : 'none' }}
+              />
+              <select
+                id="provider"
+                className="form-select"
+                value={formData.provider}
+                onChange={(e) => handleInputChange('provider', e.target.value)}
+                required
+                disabled={isEditing || status === 'saving' || status === 'testing'}
+              >
+                <option value="">Select a provider</option>
+                {availableProviders.map((provider) => {
+                  const isConfigured = configuredProviders.some(p => p.provider === provider.id);
+                  return (
+                    <option
+                      key={provider.id}
+                      value={provider.id}
+                      disabled={isConfigured && !isEditing}
+                    >
+                      {provider.name} {isConfigured ? '(configured)' : ''}
+                    </option>
+                  );
+                })}
+              </select>
+            </div>
           </div>
 
           <div className="form-group">

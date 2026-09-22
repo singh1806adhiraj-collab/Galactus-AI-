@@ -27,6 +27,10 @@ const router = createBrowserRouter([
         element: <HomePage />,
       },
       {
+        path: 'chat/:conversationId?',
+        element: <HomePage />,
+      },
+      {
         path: 'providers',
         element: <ProvidersPage />,
       },
