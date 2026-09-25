@@ -193,7 +193,6 @@ class ProviderService {
     console.log('[DEBUG] Provider config:', {
       enabled: providerConfig.enabled,
       hasApiKey: !!providerConfig.config.apiKey,
-      apiKeyPrefix: providerConfig.config.apiKey?.substring(0, 10),
       baseUrl: providerConfig.config.baseUrl
     });
 

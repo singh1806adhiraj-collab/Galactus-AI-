@@ -34,10 +34,6 @@ function authenticateToken(req, res, next) {
     }
   }
 
-  console.log('DEBUG AUTH: token found:', !!token, 'token prefix:', token?.substring(0, 20));
-  console.log('DEBUG AUTH: req.cookies:', req.cookies);
-  console.log('DEBUG AUTH: req.headers.cookie:', req.headers.cookie);
-
   if (!token) {
     return res.status(401).json({ error: 'No token provided' });
   }
